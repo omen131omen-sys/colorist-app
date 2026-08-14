@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#7c3aed">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Учёт">
+<title>Колорист · Учёт расходников</title>
+<style>
+  :root{
+    --bg:#f4f4f7; --card:#ffffff; --ink:#1c1b22; --muted:#78767f;
+    --line:#e8e7ee; --brand:#7c3aed; --brand-soft:#efe9ff;
+    --green:#16a34a; --green-soft:#e7f6ec; --red:#dc2626; --red-soft:#fdecec;
+    --amber:#d97706; --amber-soft:#fdf1e2; --blue:#2563eb;
+    --shadow:0 1px 2px rgba(20,18,30,.06),0 6px 20px rgba(20,18,30,.05);
+    --radius:16px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--ink); font-size:15px; line-height:1.4;
+    -webkit-font-smoothing:antialiased;
+  }
+  #app{max-width:390px; margin:0 auto; min-height:100vh; background:var(--bg);
+    position:relative; padding-bottom:150px;}
+  @media(min-width:800px){
+    #app{max-width:720px}
+  }
+
+  /* Header */
+  header.top{position:sticky; top:0; z-index:20; background:rgba(244,244,247,.86);
+    backdrop-filter:saturate(180%) blur(12px); padding:14px 16px 10px;
+    border-bottom:1px solid var(--line);}
+  header.top h1{margin:0; font-size:20px; font-weight:800; letter-spacing:-.02em;
+    display:flex; align-items:center; gap:8px;}
+  header.top .sub{color:var(--muted); font-size:12.5px; margin-top:2px}
+
+  /* Content */
+  main{padding:14px 16px 8px}
+  @media(min-width:800px){ .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start} }
+
+  .section-title{font-size:12px; font-weight:700; text-transform:uppercase;
+    letter-spacing:.06em; color:var(--muted); margin:18px 2px 8px; display:flex;
+    justify-content:space-between; align-items:center}
+  .section-title:first-child{margin-top:4px}
+
+  .card{background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow);
+    padding:14px; margin-bottom:10px; border:1px solid var(--line)}
+  .card.tap{cursor:pointer; transition:transform .06s ease}
+  .card.tap:active{transform:scale(.985)}
+  .mgrid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:0 0 4px}
+  @media(min-width:800px){ .mgrid{grid-template-columns:repeat(3,1fr)} }
+  .gcard{margin-bottom:0; padding:11px}
+  .acc{margin-top:12px}
+
+  .row{display:flex; align-items:center; gap:10px}
+  .row.between{justify-content:space-between}
+  .grow{flex:1; min-width:0}
+  .ell{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+
+  .badge{display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700;
+    padding:3px 8px; border-radius:999px; background:var(--brand-soft); color:var(--brand);
+    white-space:nowrap}
+  .badge.g{background:var(--green-soft); color:var(--green)}
+  .badge.r{background:var(--red-soft); color:var(--red)}
+  .badge.a{background:var(--amber-soft); color:var(--amber)}
+  .badge.n{background:#eef0f4; color:#5b5966}
+
+  .title{font-weight:700; font-size:15.5px}
+  .muted{color:var(--muted)}
+  .sm{font-size:12.5px}
+  .xs{font-size:11.5px}
+  .big{font-size:22px; font-weight:800; letter-spacing:-.02em}
+  .mono{font-variant-numeric:tabular-nums}
+
+  /* Progress bar */
+  .bar{height:7px; background:#edecf2; border-radius:999px; overflow:hidden; margin-top:9px}
+  .bar > i{display:block; height:100%; border-radius:999px; background:var(--brand); transition:width .3s}
+  .bar.low > i{background:var(--red)}
+  .bar.warn > i{background:var(--amber)}
+
+  /* Buttons */
+  button{font-family:inherit}
+  .btn{appearance:none; border:none; border-radius:12px; padding:12px 16px; font-size:15px;
+    font-weight:700; background:var(--brand); color:#fff; cursor:pointer; width:100%;
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    transition:filter .1s, transform .06s}
+  .btn:active{transform:scale(.98)}
+  .btn.ghost{background:var(--card); color:var(--ink); border:1px solid var(--line)}
+  .btn.soft{background:var(--brand-soft); color:var(--brand)}
+  .btn.danger{background:var(--red-soft); color:var(--red)}
+  .btn.sm{padding:9px 12px; font-size:13.5px; width:auto; border-radius:10px}
+  .btn.wauto{width:auto}
+  .iconbtn{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);
+    background:var(--card);display:inline-flex;align-items:center;justify-content:center;
+    cursor:pointer;font-size:16px;color:var(--muted); flex:none}
+
+  .fab{position:fixed; left:50%; transform:translateX(-50%); bottom:88px; z-index:30;
+    width:min(358px,calc(100% - 32px));}
+  @media(min-width:800px){ .fab{width:688px} }
+
+  /* Bottom nav */
+  nav.tabbar{position:fixed; bottom:0; left:0; right:0; z-index:25;
+    background:rgba(255,255,255,.9); backdrop-filter:saturate(180%) blur(14px);
+    border-top:1px solid var(--line); display:flex; justify-content:center;
+    padding:8px 6px calc(8px + env(safe-area-inset-bottom));}
+  nav.tabbar .inner{display:flex; width:100%; max-width:390px}
+  @media(min-width:800px){ nav.tabbar .inner{max-width:720px} }
+  nav.tabbar button{flex:1; background:none; border:none; cursor:pointer; color:var(--muted);
+    display:flex; flex-direction:column; align-items:center; gap:3px; font-size:11px;
+    font-weight:600; padding:4px 0}
+  nav.tabbar button.active{color:var(--brand)}
+  nav.tabbar .ico{font-size:21px; line-height:1}
+
+  /* Empty */
+  .empty{text-align:center; color:var(--muted); padding:40px 20px}
+  .empty .em{font-size:40px; margin-bottom:8px}
+
+  /* Sheet / modal */
+  .sheet-bg{position:fixed; inset:0; background:rgba(20,18,30,.42); z-index:40;
+    opacity:0; pointer-events:none; transition:opacity .22s;
+    display:flex; flex-direction:column; justify-content:flex-end}
+  .sheet-bg.open{opacity:1; pointer-events:auto}
+  @media(min-width:800px){ .sheet-bg{justify-content:center; align-items:center} }
+  .sheet{width:100%; max-width:390px; margin:0 auto; background:var(--bg);
+    border-radius:22px 22px 0 0; max-height:92vh;
+    display:flex; flex-direction:column; overflow:hidden;
+    transform:translateY(100%); transition:transform .28s cubic-bezier(.2,.8,.2,1)}
+  .sheet-bg.open .sheet{transform:translateY(0)}
+  @media(min-width:800px){ .sheet{max-width:560px; border-radius:22px; max-height:88vh;
+    transform:translateY(24px) scale(.98); opacity:0; transition:transform .25s, opacity .25s}
+    .sheet-bg.open .sheet{transform:none; opacity:1} }
+  .sheet .grab{width:38px;height:5px;border-radius:999px;background:#d7d5de;margin:10px auto 2px}
+  .sheet-head{display:flex; align-items:center; justify-content:space-between; padding:8px 16px 10px}
+  .sheet-head h2{margin:0; font-size:18px; font-weight:800; letter-spacing:-.01em}
+  .sheet-body{flex:1 1 auto; min-height:0; overflow-y:auto; padding:4px 16px 20px; -webkit-overflow-scrolling:touch}
+  .sheet-foot{padding:12px 16px calc(14px + env(safe-area-inset-bottom));
+    border-top:1px solid var(--line); background:var(--card); display:flex; gap:10px}
+  .sheet-foot .btn{flex:1}
+
+  /* Form */
+  label.fld{display:block; margin-bottom:12px}
+  label.fld > span{display:block; font-size:12.5px; font-weight:600; color:var(--muted); margin-bottom:5px}
+  input,select,textarea{width:100%; font-family:inherit; font-size:16px; padding:12px;
+    border:1px solid var(--line); border-radius:11px; background:var(--card); color:var(--ink);
+    -webkit-appearance:none; appearance:none}
+  input:focus,select,textarea:focus{outline:2px solid var(--brand-soft); border-color:var(--brand)}
+  select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2378767f' stroke-width='2'><path d='M4 6l4 4 4-4'/></svg>");
+    background-repeat:no-repeat; background-position:right 12px center; padding-right:34px}
+  .fld-row{display:flex; gap:10px}
+  .fld-row > *{flex:1}
+  .seg{display:flex; gap:6px; background:#ececf1; padding:4px; border-radius:12px}
+  .seg button{flex:1; border:none; background:none; padding:9px 4px; border-radius:9px;
+    font-weight:700; font-size:13px; color:var(--muted); cursor:pointer}
+  .seg button.on{background:var(--card); color:var(--brand); box-shadow:var(--shadow)}
+
+  .kv{display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px dashed var(--line)}
+  .kv:last-child{border-bottom:none}
+  .kv .k{color:var(--muted)}
+  .kv .v{font-weight:700; font-variant-numeric:tabular-nums}
+
+  .step-card{background:var(--card); border:1px solid var(--line); border-radius:13px;
+    padding:11px; margin-bottom:9px}
+  .toast{position:fixed; bottom:96px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:#1c1b22; color:#fff; padding:11px 18px; border-radius:12px; font-size:13.5px;
+    font-weight:600; z-index:60; opacity:0; transition:.25s; pointer-events:none; box-shadow:var(--shadow)}
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+  .confirm-bg{position:fixed; inset:0; background:rgba(20,18,30,.5); z-index:70;
+    display:flex; align-items:center; justify-content:center; padding:24px;
+    opacity:0; pointer-events:none; transition:opacity .18s}
+  .confirm-bg.open{opacity:1; pointer-events:auto}
+  .confirm{background:var(--card); border-radius:18px; max-width:330px; width:100%;
+    padding:20px; box-shadow:var(--shadow); transform:scale(.96); transition:transform .18s}
+  .confirm-bg.open .confirm{transform:scale(1)}
+  .confirm-msg{font-size:15px; font-weight:600; line-height:1.4; margin-bottom:18px}
+  .confirm-btns{display:flex; gap:10px}
+  .confirm-btns .btn{flex:1}
+  .divider{height:1px;background:var(--line);margin:14px 0}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:14px;box-shadow:var(--shadow)}
+  .stat .lab{font-size:12px;color:var(--muted);font-weight:600}
+  .stat .num{font-size:23px;font-weight:800;letter-spacing:-.02em;margin-top:3px}
+  .grid-stat{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .chip{display:inline-block;padding:5px 10px;border-radius:999px;background:#eef0f4;
+    font-size:12px;font-weight:600;color:#5b5966;margin:0 6px 6px 0}
+  .hl{background:var(--brand-soft);color:var(--brand)}
+  a.link{color:var(--brand);font-weight:600;text-decoration:none}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <h1 id="hTitle">💇‍♀️ Склад</h1>
+    <div class="sub" id="hSub">Расходники и остатки</div>
+  </header>
+  <main id="view"></main>
+</div>
+
+<div class="fab" id="fabWrap"></div>
+
+<nav class="tabbar">
+  <div class="inner">
+    <button data-tab="stock" class="active"><span class="ico">📦</span>Склад</button>
+    <button data-tab="services"><span class="ico">✂️</span>Услуги</button>
+    <button data-tab="works"><span class="ico">📋</span>Работы</button>
+    <button data-tab="report"><span class="ico">📊</span>Отчёт</button>
+  </div>
+</nav>
+
+<div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()">
+  <div class="sheet" id="sheet">
+    <div class="grab"></div>
+    <div class="sheet-head"><h2 id="sheetTitle"></h2>
+      <span class="iconbtn" onclick="closeSheet()">✕</span></div>
+    <div class="sheet-body" id="sheetBody"></div>
+    <div class="sheet-foot" id="sheetFoot"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<div class="confirm-bg" id="confirmBg" onclick="if(event.target===this)closeConfirm()">
+  <div class="confirm">
+    <div class="confirm-msg" id="confirmMsg"></div>
+    <div class="confirm-btns">
+      <button class="btn ghost" onclick="closeConfirm()">Отмена</button>
+      <button class="btn danger" id="confirmYes" onclick="doConfirm()">Удалить</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ==================== КОНСТАНТЫ ==================== */
+const LEN = {plecho:'До плеч', lopatki:'До лопаток', poyasnitsa:'До поясницы'};
+const DEN = {tonkie:'Тонкие', srednie:'Средние', gustye:'Густые'};
+const LEN_K = Object.keys(LEN), DEN_K = Object.keys(DEN);
+const TYPE = {краска:'Краска', оксид:'Оксид', пудра:'Пудра', уход:'Уход'};
+const TYPE_BADGE = {краска:'', оксид:'n', пудра:'a', уход:'g'};
+const money = v => Math.round(v).toLocaleString('ru-RU') + ' ₽';
+const money1 = v => (Math.round(v*10)/10).toLocaleString('ru-RU') + ' ₽';
+const uid = p => p + Math.random().toString(36).slice(2,8);
+const gpr = m => m.цена_упаковки / m.нетто_г;              // цена за грамм
+
+/* ==================== СИД ==================== */
+function seed(){
+  // Реальный склад из тетради. Краски суммированы по оттенку (остаток нетто, г).
+  // Цены — примерные (демо). нетто_г — вес продукта в полной упаковке; цена_за_грамм = цена/нетто.
+  let _id=0; const nid=p=>p+(_id++);
+  // [бренд, название, остаток_г, цена_упаковки]
+  const paintRows = [
+    // Helen Seward · серия Lumia
+    ['Helen Seward','Краска Lumia 10.12',186,620],['Helen Seward','Краска Lumia 9.23',62,620],
+    ['Helen Seward','Краска Lumia 9.24',38,620],['Helen Seward','Краска Lumia 9.27',69,620],
+    ['Helen Seward','Краска Lumia 8.2',77,620],['Helen Seward','Краска Lumia 7.1',83,620],
+    ['Helen Seward','Краска Lumia 7.34',142,620],['Helen Seward','Краска Lumia 7.2',37,620],
+    ['Helen Seward','Краска Lumia 7.0',13,620],['Helen Seward','Краска Lumia 6.4',37,620],
+    ['Helen Seward','Краска Lumia 6.32',41,620],['Helen Seward','Краска Lumia 6.21',92,620],
+    ['Helen Seward','Краска Lumia 6.2',154,620],['Helen Seward','Краска Lumia 6.1',139,620],
+    ['Helen Seward','Краска Lumia 6.0',114,620],['Helen Seward','Краска Lumia 5.32',99,620],
+    ['Helen Seward','Краска Lumia 5.5',95,620],['Helen Seward','Краска Lumia 5.21',65,620],
+    ['Helen Seward','Краска Lumia 5.0',38,620],['Helen Seward','Краска Lumia 4.0',131,620],
+    ['Helen Seward','Краска Lumia 0.55',70,620],['Helen Seward','Краска Lumia 0.88',5,620],
+    ['Helen Seward','Краска Lumia 0.33',120,620],['Helen Seward','Краска Lumia 0.77',78,620],
+    ['Helen Seward','Краска Lumia 0.44',67,620],
+    // Helen Seward · серия BB
+    ['Helen Seward','Краска BB 10.3',71,620],['Helen Seward','Краска BB 0.0',93,620],
+    ['Helen Seward','Краска BB 10.2',93,620],['Helen Seward','Краска BB 8.3',24,620],
+    ['Helen Seward','Краска BB 7.32',40,620],['Helen Seward','Краска BB 10.17',64,620],
+    ['Helen Seward','Краска BB 9.2',20,620],['Helen Seward','Краска BB 9.12',42,620],
+    // Прочие бренды
+    ['OLLIN','Краска OLLIN 0/0',245,520],['Estel','Краска Estel Sens 6.11',68,480],
+    ['Estel','Краска Estel Blondbar BBC18',192,480],['Estel','Краска Estel Sens 7.0',50,480],
+    ['Estel','Краска Estel Sens 6.17',56,480],['OLLIN','Краска OLLIN Silk 0.0',204,520],
+    ['Schwarzkopf','Краска Igora 12.0',55,720],['Estel','Краска Estel Princess 0.66',66,480],
+    ['Constant Delight','Краска CD 0.55',105,390],['JOC','Краска JOC super lightening 12.11',108,990],
+    ['Be Hair','Краска Be Hair 3С 6.2',104,560],['Bouticle','Краска Bouticle expert 0.0',101,520],
+    ['Alfaparf','Краска Alfaparf Yellow 7.21',84,680],
+  ];
+  const paints = paintRows.map(r=>({id:nid('k'), бренд:r[0], название:r[1], тип:'краска',
+    объём_мл:100, тара_г:15, нетто_г:93, цена_упаковки:r[3], остаток_г:r[2], мин_остаток_г:30}));
+
+  // [бренд, название, остаток_г, цена, объём_мл, тара_г, нетто_г]
+  const oxRows = [
+    ['Helen Seward','Оксид 1.5%',5000,2800,5000,150,5350],
+    ['Helen Seward','Оксид 3%',5000,2800,5000,150,5350],
+    ['Helen Seward','Оксид 6%',345,2800,5000,150,5350],
+    ['OLLIN','Оксид 1% крем-эмульсия',615,600,500,50,520],
+    ['Londa','Оксид 6% 20vol',378,950,1000,60,1000],
+    ['Londa','Оксид 12% 40vol',1117,950,1000,60,1000],
+    ['Londa','Оксид 1.9% 6vol',483,950,1000,60,1000],
+  ];
+  const oxids = oxRows.map(r=>({id:nid('o'), бренд:r[0], название:r[1], тип:'оксид',
+    объём_мл:r[4], тара_г:r[5], нетто_г:r[6], цена_упаковки:r[3], остаток_г:r[2], мин_остаток_г:500}));
+
+  const powders = [['—','Пудра осветляющая',310,1900]].map(r=>({id:nid('pw'), бренд:r[0], название:r[1],
+    тип:'пудра', объём_мл:0, тара_г:0, нетто_г:500, цена_упаковки:r[3], остаток_г:r[2], мин_остаток_г:100}));
+
+  // [бренд, название, остаток_г, цена, объём_мл, тара_г, нетто_г]
+  const careRows = [
+    ['Limba','Бонд-защита',420,3200,500,20,500],
+    ['Limba','Scalp Clean (шампунь-мята)',1542,1200,1000,60,1000],
+    ['Limba','Purifying (шампунь)',1940,1200,1000,60,1000],
+    ['Limba','For Natural Hair',180,1500,1000,60,1000],
+    ['Limba','Lipid Treatment',989,1800,750,50,750],
+    ['Estel','Princess Essex',253,900,1000,60,1000],
+    ['SIM','Розовый бальзам',279,1100,1000,60,1000],
+    ['TaShe','Шампунь стандартный',928,800,1000,60,1000],
+    ['TaShe','Кондиционер питательный',854,900,750,50,750],
+    ['Limba','Protein Treatment',322,1900,750,50,750],
+    ['Limba','Reconstruction',555,2100,300,30,300],
+    ['Limba','Immediate Protection',465,1700,300,30,300],
+    ['Limba','Total Revitalizer',346,1600,250,25,250],
+    ['Limba','Activator',163,1400,250,25,250],
+    ['Limba','SOS Treatment',214,1800,250,25,250],
+  ];
+  const care = careRows.map(r=>({id:nid('u'), бренд:r[0], название:r[1], тип:'уход',
+    объём_мл:r[4], тара_г:r[5], нетто_г:r[6], цена_упаковки:r[3], остаток_г:r[2], мин_остаток_г:100}));
+
+  const materials = [...paints, ...oxids, ...powders, ...care];
+  const pieces = [
+    {id:'p1', название:'Перчатки', кол_во:100, цена_за_штуку:5, остаток_шт:78},
+    {id:'p2', название:'Шапочка для мелирования', кол_во:50, цена_за_штуку:12, остаток_шт:31},
+    {id:'p3', название:'Воротник одноразовый', кол_во:100, цена_за_штуку:8, остаток_шт:64},
+  ];
+
+  // Услуги: название, цена, время и типовая формула (шаблон рецепта).
+  const services = [
+    {id:'s1', название:'Окрашивание в один тон', иконка:'🎨', цена:2500, время_мин:90,
+     формула:'6.0 (40гр) + хс 6% (60гр)'},
+    {id:'s2', название:'Осветление + тонирование', иконка:'✨', цена:4200, время_мин:120,
+     формула:'Пудра (30гр) + хс 6% (60гр)\n8.3 (20гр) + 1,5% (40гр)'},
+    {id:'s3', название:'Уход/ботокс', иконка:'💆', цена:1500, время_мин:40,
+     формула:'Бонд-защита (25гр)'},
+  ];
+
+  const works = [
+    mkWork(services[0], materials, -6, 8),
+    mkWork(services[1], materials, -2, 12),
+    mkWork(services[0], materials, -1, 5),
+  ];
+  return {materials, pieces, services, works, purchases:[], _v:4};
+
+  function mkWork(svc, mats, dayOffset, waste){
+    const lines = parseFormulaText(svc.формула, mats);
+    const steps = lines.filter(l=>l.материал_id).map(l=>({
+      название:(mats.find(m=>m.id===l.материал_id)||{}).название||'',
+      материал_id:l.материал_id, факт_граммы:l.граммы, оксид_id:null, факт_оксида:0
+    }));
+    const d = new Date(); d.setDate(d.getDate()+dayOffset);
+    const w = {
+      id:uid('w'), дата:d.toISOString().slice(0,10), услуга_id:svc.id, услуга_назв:svc.название,
+      шаги:steps, остаток_смеси_г:waste||0,
+      штучные:[{id:'p1', название:'Перчатки', кол_во:1, цена_за_штуку:5}],
+      цена: svc.цена, формула: svc.формула,
+    };
+    w.себестоимость = calcCost(w, mats);
+    w.маржа = w.цена - w.себестоимость;
+    return w;
+  }
+}
+
+/* Чистый разбор формулы (без DOM) — используется и в сиде, и в приложении.
+   Код оттенка сравнивается ТОЧНО (9.2 ≠ 9.23). Если один код есть в разных
+   сериях/брендах (Lumia 6.2 и BB 6.2) — ищем подсказку в тексте («вв», «люмиа»,
+   бренд); не нашли — строка помечается неоднозначной с списком кандидатов. */
+const _ALIAS={'вв':'bb','бб':'bb','люмиа':'lumia','люмия':'lumia','люми':'lumia','хс':'helen','лонда':'londa','оллин':'ollin','эстель':'estel','эстел':'estel'};
+function _matCode(m){ const c=m.название.replace(/(\d),(\d)/g,'$1.$2').match(/(\d{1,2}\.\d{1,2})/); return c?c[1]:null; }
+function _matPct(m){ const c=m.название.replace(/(\d),(\d)/g,'$1.$2').match(/(\d+(?:\.\d+)?)\s*%/); return c?c[1]:null; }
+function parseFormulaText(text, mats){
+  const chunks=(text||'').split(/[+\n;]+/).map(s=>s.trim()).filter(Boolean);
+  const lines=[];
+  chunks.forEach(ch=>{
+    const norm=ch.toLowerCase().replace(/(\d),(\d)/g,'$1.$2');
+    let grams=null;
+    const gm=norm.match(/(\d+(?:\.\d+)?)\s*(?:гр|г|g|мл|ml)(?![а-яёa-z])/i);
+    if(gm) grams=parseFloat(gm[1]);
+    // слова-подсказки из строки (серия/бренд), с алиасами кириллицы
+    const tokens=(norm.match(/[a-zа-яё]{2,}/g)||[]).filter(t=>!['гр','мл'].includes(t)).map(t=>_ALIAS[t]||t);
+    const hay=m=>(m.название+' '+m.бренд).toLowerCase();
+    // отбор по словам: побеждают материалы с НАИБОЛЬШИМ числом совпавших слов
+    const byTokens=list=>{
+      const scored=list.map(m=>({m, n:tokens.filter(t=>hay(m).includes(t)).length})).filter(x=>x.n>0);
+      if(!scored.length) return [];
+      const max=Math.max(...scored.map(x=>x.n));
+      return scored.filter(x=>x.n===max).map(x=>x.m);
+    };
+    let cand=[];
+    const pm=norm.match(/(\d+(?:\.\d+)?)\s*%/);
+    if(pm){ cand=mats.filter(m=>m.тип==='оксид' && _matPct(m)===pm[1]); }
+    else if(/пудр|блонд|обесцв|порош|осветл/.test(norm)){ cand=mats.filter(m=>m.тип==='пудра'); }
+    else if(/бонд|плекс|plex|защит|уход|шампун|кондицион/.test(norm)){ cand=mats.filter(m=>m.тип==='уход'); }
+    else {
+      // код оттенка — ищем ТОЛЬКО среди красок
+      const cm=norm.match(/(\d{1,2}\.\d{1,2})/);
+      if(cm) cand=mats.filter(m=>m.тип==='краска' && _matCode(m)===cm[1]);
+      // код не нашёлся или его нет, но есть слова — ищем по названию во всех типах (уходы, пудры)
+      if(!cand.length && tokens.some(t=>t.length>=3)) cand=byTokens(mats);
+    }
+    // сужаем по подсказкам («вв 6.2», «лонда 6%», «би хеир»)
+    if(cand.length>1 && tokens.length){
+      const hit=byTokens(cand);
+      if(hit.length>=1) cand=hit;
+    }
+    if(grams==null){ const bn=norm.match(/(\d+(?:\.\d+)?)\s*$/); if(bn) grams=parseFloat(bn[1]); }
+    if(grams!=null || cand.length){
+      lines.push({материал_id:cand.length===1?cand[0].id:null, граммы:grams||0, raw:ch,
+        кандидаты:cand.length>1?cand.map(m=>m.id):null});
+    }
+  });
+  return lines;
+}
+
+/* стоимость работы по её шагам (без списания склада) */
+function calcCost(w, materials){
+  const mp = Object.fromEntries(materials.map(m=>[m.id,m]));
+  let c = 0;
+  (w.шаги||[]).forEach(s=>{
+    const m = mp[s.материал_id]; const ox = mp[s.оксид_id];
+    if(m) c += (s.факт_граммы||0)*gpr(m);
+    if(ox) c += (s.факт_оксида||0)*gpr(ox);
+  });
+  (w.штучные||[]).forEach(p=> c += (p.кол_во||0)*(p.цена_за_штуку||0));
+  return Math.round(c);
+}
+
+/* ==================== ХРАНИЛИЩЕ ==================== */
+const KEY = 'colorist_v7';
+let DB;
+function load(){
+  try{ DB = JSON.parse(localStorage.getItem(KEY)); }catch(e){ DB=null; }
+  if(!DB || !DB.materials){ DB = seed(); save(); }
+  if(!DB.purchases) DB.purchases=[];
+}
+function save(){ localStorage.setItem(KEY, JSON.stringify(DB)); }
+function mById(id){ return DB.materials.find(m=>m.id===id); }
+function pById(id){ return DB.pieces.find(p=>p.id===id); }
+function sById(id){ return DB.services.find(s=>s.id===id); }
+
+/* ==================== НАВИГАЦИЯ ==================== */
+let TAB = 'stock';
+const TABS = {
+  stock:   {t:'💇‍♀️ Склад', s:'Расходники и остатки', r:renderStock},
+  services:{t:'✂️ Услуги', s:'Нормативы и цены', r:renderServices},
+  works:   {t:'📋 Работы', s:'История и расчёт', r:renderWorks},
+  report:  {t:'📊 Отчёт', s:'Финансы и запасы', r:renderReport},
+};
+function go(tab){
+  TAB=tab;
+  document.querySelectorAll('nav.tabbar button').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+  const cfg = TABS[tab];
+  hTitle.textContent = cfg.t; hSub.textContent = cfg.s;
+  document.getElementById('view').innerHTML = cfg.r();
+  document.getElementById('fabWrap').innerHTML = fabFor(tab);
+  window.scrollTo(0,0);
+}
+function fabFor(tab){
+  if(tab==='stock') return `<button class="btn" onclick="editMaterial()">＋ Добавить расходник</button>`;
+  if(tab==='services') return `<button class="btn" onclick="editService()">＋ Новая услуга</button>`;
+  return '';
+}
+
+/* ==================== СКЛАД ==================== */
+function stockState(m){
+  const r = m.остаток_г, min = m.мин_остаток_г;
+  if(r <= min) return {cls:'low', badge:'r', txt:'Мало'};
+  if(r <= min*1.5) return {cls:'warn', badge:'a', txt:'Заканчивается'};
+  return {cls:'', badge:'g', txt:'В норме'};
+}
+function renderStock(){
+  const low = DB.materials.filter(m=>m.остаток_г<=m.мин_остаток_г).length
+            + DB.pieces.filter(p=>p.остаток_шт<=10).length;
+  let h = '';
+  if(low>0){
+    h += `<div class="card" style="border-color:#f6d2d2;background:var(--red-soft)">
+      <div class="row"><span style="font-size:20px">⚠️</span>
+      <div class="grow"><div class="title" style="color:var(--red)">${low} позиц. на исходе</div>
+      <div class="sm muted">Пора пополнить запас</div></div></div></div>`;
+  }
+  const groups = [
+    {k:'краска', ic:'🎨', title:'Краска'},
+    {k:'оксид', ic:'🧪', title:'Оксид'},
+    {k:'пудра', ic:'✨', title:'Пудра'},
+    {k:'уход', ic:'💆', title:'Уход и шампуни'},
+  ];
+  groups.forEach(g=>{
+    const items = DB.materials.filter(m=>m.тип===g.k);
+    if(!items.length) return;
+    const lowN = items.filter(m=>m.остаток_г<=m.мин_остаток_г).length;
+    const open = !!_stockOpen[g.k];
+    h += accHeader(g.k, g.ic, g.title, items.length, lowN, open);
+    if(open){
+      h += `<div class="mgrid">` + items.map(m=>{
+        const st = stockState(m);
+        const pct = Math.max(4, Math.min(100, m.остаток_г/(m.нетто_г)*100));
+        return `<div class="card tap gcard" onclick="matSheet('${m.id}')">
+          <div class="title ell" style="font-size:13.5px;line-height:1.25">${esc(m.название)}</div>
+          <div class="xs muted ell" style="margin-top:2px">${esc(m.бренд)}</div>
+          <div class="bar ${st.cls}" style="margin-top:8px"><i style="width:${pct}%"></i></div>
+          <div class="row between" style="margin-top:6px">
+            <span class="mono"><b style="font-size:15px">${fmtG(m.остаток_г)}</b> <span class="xs muted">г</span></span>
+            ${st.badge!=='g'?`<span class="badge ${st.badge}" style="padding:2px 7px">${st.txt}</span>`:`<span class="xs muted">${money1(gpr(m))}/г</span>`}
+          </div>
+        </div>`;
+      }).join('') + `</div>`;
+    }
+  });
+  // Штучные
+  const lowP = DB.pieces.filter(p=>p.остаток_шт<=10).length;
+  const openP = !!_stockOpen.pieces;
+  h += accHeader('pieces','🧤','Штучные', DB.pieces.length, lowP, openP);
+  if(openP){
+    h += `<div class="mgrid">` + DB.pieces.map(p=>{
+      const low = p.остаток_шт<=10;
+      return `<div class="card tap gcard" onclick="pieceSheet('${p.id}')">
+        <div class="title ell" style="font-size:13.5px;line-height:1.25">${esc(p.название)}</div>
+        <div class="xs muted" style="margin-top:2px">${money1(p.цена_за_штуку)}/шт</div>
+        <div class="row between" style="margin-top:8px;align-items:flex-end">
+          <span class="mono"><b style="font-size:20px;color:${low?'var(--red)':'var(--ink)'}">${p.остаток_шт}</b> <span class="xs muted">шт</span></span>
+          ${low?`<span class="badge r" style="padding:2px 7px">Мало</span>`:''}
+        </div>
+      </div>`;
+    }).join('') + `</div>`;
+  }
+  return h;
+}
+function accHeader(k, ic, title, n, lowN, open){
+  return `<div class="card tap acc" onclick="toggleStock('${k}')">
+    <div class="row between">
+      <div class="row" style="gap:9px"><span style="font-size:18px">${ic}</span><span class="title">${title}</span></div>
+      <div class="row" style="gap:9px">
+        ${lowN?`<span class="badge r">${lowN} мало</span>`:''}
+        <span class="muted mono">${n}</span>
+        <span style="display:inline-block;color:var(--muted);transition:transform .2s;${open?'transform:rotate(90deg)':''}">▸</span>
+      </div>
+    </div>
+  </div>`;
+}
+let _stockOpen = {краска:true};
+function toggleStock(k){
+  _stockOpen[k]=!_stockOpen[k];
+  document.getElementById('view').innerHTML = renderStock();
+}
+function matSheet(id){
+  const m = mById(id);
+  const st = stockState(m);
+  openSheet(esc(m.название), `
+    <div class="card">
+      <div class="kv"><span class="k">Бренд</span><span class="v">${esc(m.бренд)}</span></div>
+      <div class="kv"><span class="k">Тип</span><span class="v">${TYPE[m.тип]||m.тип}</span></div>
+      ${m.объём_мл?`<div class="kv"><span class="k">Объём упаковки</span><span class="v">${m.объём_мл} мл</span></div>`:''}
+      <div class="kv"><span class="k">Вес полной упаковки</span><span class="v">${fmtG(m.нетто_г)} г</span></div>
+      ${m.тара_г?`<div class="kv"><span class="k">Вес пустой тары</span><span class="v">${m.тара_г} г</span></div>`:''}
+      <div class="kv"><span class="k">Цена упаковки</span><span class="v">${money(m.цена_упаковки)}</span></div>
+      <div class="kv"><span class="k">Цена за грамм</span><span class="v">${money1(gpr(m))}</span></div>
+      <div class="kv"><span class="k">Текущий остаток</span><span class="v">${fmtG(m.остаток_г)} г${m.объём_мл?` · ≈${Math.round(m.остаток_г/m.нетто_г*10)/10} уп.`:''}</span></div>
+      <div class="kv"><span class="k">Мин. остаток</span><span class="v">${m.мин_остаток_г} г</span></div>
+      <div class="kv"><span class="k">Статус</span><span class="v" style="color:${st.badge==='r'?'var(--red)':st.badge==='a'?'var(--amber)':'var(--green)'}">${st.txt}</span></div>
+      <div class="kv"><span class="k">Стоимость остатка</span><span class="v">${money(m.остаток_г*gpr(m))}</span></div>
+    </div>`,
+    [
+      `<button class="btn soft" onclick="restockMat('${id}')">📥 Приход</button>`,
+      `<button class="btn ghost" onclick="editMaterial('${id}')">✏️ Изменить</button>`,
+    ]);
+}
+function pieceSheet(id){
+  const p = pById(id);
+  openSheet(esc(p.название), `
+    <div class="card">
+      <div class="kv"><span class="k">В упаковке</span><span class="v">${p.кол_во} шт</span></div>
+      <div class="kv"><span class="k">Цена за штуку</span><span class="v">${money1(p.цена_за_штуку)}</span></div>
+      <div class="kv"><span class="k">Остаток</span><span class="v">${p.остаток_шт} шт</span></div>
+      <div class="kv"><span class="k">Стоимость остатка</span><span class="v">${money(p.остаток_шт*p.цена_за_штуку)}</span></div>
+    </div>`,
+    [
+      `<button class="btn soft" onclick="restockPiece('${id}')">📥 Приход</button>`,
+      `<button class="btn ghost" onclick="editPiece('${id}')">✏️ Изменить</button>`,
+    ]);
+}
+function restockMat(id){
+  const m = mById(id);
+  openSheet('Приход · '+esc(m.название), `
+    <div class="sm muted" style="margin-bottom:12px">Купили такую же упаковку — укажите сколько и за сколько. Граммы и деньги учтутся сами, взвешивать не нужно. 1 упаковка = ${fmtG(m.нетто_г)} г.</div>
+    <div class="fld-row">
+      <label class="fld"><span>Сколько упаковок</span>
+        <input id="rq" type="number" inputmode="numeric" value="1" step="0.5"
+          oninput="const s=document.getElementById('rs'); if(s) s.value=Math.round((+this.value||0)*${m.цена_упаковки})"></label>
+      <label class="fld"><span>Сумма покупки, ₽</span>
+        <input id="rs" type="number" inputmode="numeric" value="${m.цена_упаковки}"></label>
+    </div>
+    <div class="sm muted" style="margin:-4px 0 10px">Если цена изменилась — просто исправьте сумму, новая цена запомнится.</div>
+    <div class="divider"></div>
+    <label class="fld"><span>…или добавить граммами без покупки (початая тара, корректировка)</span>
+      <input id="rg" type="number" inputmode="numeric" placeholder="0"></label>
+    <div class="sm muted">Текущий остаток: ${fmtG(m.остаток_г)} г</div>`,
+    [`<button class="btn ghost" onclick="closeSheet()">Отмена</button>`,
+     `<button class="btn" onclick="doRestockMat('${id}')">Добавить</button>`]);
+}
+function doRestockMat(id){
+  const m=mById(id);
+  const g=+document.getElementById('rg').value||0;
+  const packs=+document.getElementById('rq').value||0;
+  if(g>0){ // корректировка граммами, без денег
+    m.остаток_г += g; save(); closeSheet(); go('stock'); return toast('Приход +'+fmtG(g)+' г (без покупки)');
+  }
+  if(packs<=0) return toast('Укажите количество упаковок');
+  const сумма=+document.getElementById('rs').value||0;
+  const add = packs*m.нетто_г;
+  m.остаток_г += add;
+  // цена изменилась → запоминаем новую цену упаковки (себестоимость дальше по ней)
+  const newPack = сумма/packs;
+  if(сумма>0 && Math.abs(newPack-m.цена_упаковки)>=1) m.цена_упаковки = Math.round(newPack);
+  logPurchase({материал_id:m.id, название:m.название, кол:packs+' уп.', граммы:add, сумма});
+  save(); closeSheet(); go('stock');
+  toast('Приход +'+fmtG(add)+' г · закупка '+money(сумма));
+}
+function restockPiece(id){
+  const p=pById(id);
+  openSheet('Приход · '+esc(p.название), `
+    <div class="fld-row">
+      <label class="fld"><span>Сколько добавить, шт</span>
+        <input id="rq" type="number" inputmode="numeric" value="${p.кол_во}"
+          oninput="const s=document.getElementById('rs'); if(s) s.value=Math.round((+this.value||0)*${p.цена_за_штуку})"></label>
+      <label class="fld"><span>Сумма покупки, ₽</span>
+        <input id="rs" type="number" inputmode="numeric" value="${Math.round(p.кол_во*p.цена_за_штуку)}"></label>
+    </div>
+    <div class="sm muted">Текущий остаток: ${p.остаток_шт} шт. Если цена изменилась — исправьте сумму.</div>`,
+    [`<button class="btn ghost" onclick="closeSheet()">Отмена</button>`,
+     `<button class="btn" onclick="doRestockPiece('${id}')">Добавить</button>`]);
+}
+function doRestockPiece(id){
+  const p=pById(id); const q=+document.getElementById('rq').value||0;
+  if(q<=0) return toast('Укажите количество');
+  const сумма=+document.getElementById('rs').value||0;
+  p.остаток_шт += q;
+  const newPer = сумма/q;
+  if(сумма>0 && Math.abs(newPer-p.цена_за_штуку)>=0.5) p.цена_за_штуку = Math.round(newPer*10)/10;
+  logPurchase({материал_id:p.id, название:p.название, кол:q+' шт', граммы:0, сумма});
+  save(); closeSheet(); go('stock'); toast('Приход +'+q+' шт · закупка '+money(сумма));
+}
+function logPurchase(o){
+  if(!DB.purchases) DB.purchases=[];
+  DB.purchases.push({id:uid('b'), дата:new Date().toISOString().slice(0,10), ...o});
+}
+
+function editMaterial(id){
+  const m = id?mById(id):null;
+  const isPiece = false;
+  openSheet(m?'Изменить расходник':'Новый расходник', `
+    <div class="seg" id="matKind" style="margin-bottom:14px">
+      <button class="on" data-k="w" onclick="matKind('w')">Весовой</button>
+      <button data-k="p" onclick="matKind('p')">Штучный</button>
+    </div>
+    <div id="matForm"></div>`, []);
+  matKind('w', m);
+}
+function matKind(k, m){
+  document.querySelectorAll('#matKind button').forEach(b=>b.classList.toggle('on', b.dataset.k===k));
+  const f = document.getElementById('matForm');
+  const foot = document.getElementById('sheetFoot');
+  if(k==='w'){
+    f.innerHTML = `
+      <label class="fld"><span>Название</span><input id="f_name" value="${m?esc(m.название):''}" placeholder="Краска 6.0"></label>
+      <label class="fld"><span>Бренд</span><input id="f_brand" value="${m?esc(m.бренд):''}" placeholder="Helen Seward"></label>
+      <label class="fld"><span>Тип</span><select id="f_type">
+        ${Object.keys(TYPE).map(t=>`<option value="${t}" ${m&&m.тип===t?'selected':''}>${TYPE[t]}</option>`).join('')}
+      </select></label>
+      <div class="fld-row">
+        <label class="fld"><span>Объём упаковки, мл</span><input id="f_ml" type="number" inputmode="numeric" value="${m&&m.объём_мл?m.объём_мл:''}" placeholder="100"></label>
+        <label class="fld"><span>Цена упаковки, ₽</span><input id="f_price" type="number" inputmode="numeric" value="${m?m.цена_упаковки:''}" placeholder="620"></label>
+      </div>
+      <div class="fld-row">
+        <label class="fld"><span>Вес полной упаковки, г</span><input id="f_net" type="number" inputmode="numeric" value="${m?m.нетто_г:''}" placeholder="93"></label>
+        <label class="fld"><span>Вес пустой тары, г</span><input id="f_tare" type="number" inputmode="numeric" value="${m&&m.тара_г?m.тара_г:''}" placeholder="15"></label>
+      </div>
+      <div class="sm muted" style="margin:-4px 0 12px">Вес полной упаковки взвешивается один раз. Цена за грамм = цена ÷ вес.</div>
+      <div class="fld-row">
+        <label class="fld"><span>Остаток, г</span><input id="f_rest" type="number" inputmode="numeric" value="${m?m.остаток_г:''}" placeholder="84"></label>
+        <label class="fld"><span>Мин. остаток, г</span><input id="f_min" type="number" inputmode="numeric" value="${m?m.мин_остаток_г:30}" placeholder="30"></label>
+      </div>`;
+    foot.innerHTML = (m?`<button class="btn danger wauto" onclick="delMaterial('${m.id}')">🗑</button>`:'')+
+      `<button class="btn" onclick="saveMaterialW('${m?m.id:''}')">Сохранить</button>`;
+  } else {
+    f.innerHTML = `
+      <label class="fld"><span>Название</span><input id="f_name" value="${m&&m.остаток_шт!=null?esc(m.название):''}" placeholder="Перчатки"></label>
+      <div class="fld-row">
+        <label class="fld"><span>В упаковке, шт</span><input id="f_qty" type="number" inputmode="numeric" placeholder="100"></label>
+        <label class="fld"><span>Цена за штуку, ₽</span><input id="f_pp" type="number" inputmode="numeric" placeholder="5"></label>
+      </div>
+      <label class="fld"><span>Остаток, шт</span><input id="f_rest" type="number" inputmode="numeric" placeholder="80"></label>`;
+    foot.innerHTML = `<button class="btn" onclick="saveMaterialP('')">Сохранить</button>`;
+  }
+}
+function saveMaterialW(id){
+  const g=x=>document.getElementById(x).value;
+  const name=g('f_name').trim(); if(!name) return toast('Введите название');
+  const obj={ бренд:g('f_brand').trim()||'—', название:name, тип:g('f_type'),
+    объём_мл:+g('f_ml')||0, тара_г:+g('f_tare')||0,
+    нетто_г:+g('f_net')||1, цена_упаковки:+g('f_price')||0,
+    остаток_г:+g('f_rest')||0, мин_остаток_г:+g('f_min')||0 };
+  if(id){ Object.assign(mById(id), obj); } else { DB.materials.push({id:uid('m'),...obj}); }
+  save(); closeSheet(); go('stock'); toast('Сохранено');
+}
+function saveMaterialP(id){
+  const g=x=>document.getElementById(x).value;
+  const name=g('f_name').trim(); if(!name) return toast('Введите название');
+  const obj={ название:name, кол_во:+g('f_qty')||1, цена_за_штуку:+g('f_pp')||0, остаток_шт:+g('f_rest')||0 };
+  DB.pieces.push({id:uid('p'),...obj});
+  save(); closeSheet(); go('stock'); toast('Сохранено');
+}
+function editPiece(id){
+  const p=pById(id);
+  openSheet('Изменить расходник', `
+    <label class="fld"><span>Название</span><input id="f_name" value="${esc(p.название)}"></label>
+    <div class="fld-row">
+      <label class="fld"><span>В упаковке, шт</span><input id="f_qty" type="number" inputmode="numeric" value="${p.кол_во}"></label>
+      <label class="fld"><span>Цена за штуку, ₽</span><input id="f_pp" type="number" inputmode="numeric" value="${p.цена_за_штуку}"></label>
+    </div>
+    <label class="fld"><span>Остаток, шт</span><input id="f_rest" type="number" inputmode="numeric" value="${p.остаток_шт}"></label>`,
+    [`<button class="btn danger wauto" onclick="delPiece('${id}')">🗑</button>`,
+     `<button class="btn" onclick="savePiece('${id}')">Сохранить</button>`]);
+}
+function savePiece(id){
+  const g=x=>document.getElementById(x).value;
+  const p=pById(id);
+  p.название=g('f_name').trim()||p.название; p.кол_во=+g('f_qty')||1;
+  p.цена_за_штуку=+g('f_pp')||0; p.остаток_шт=+g('f_rest')||0;
+  save(); closeSheet(); go('stock'); toast('Сохранено');
+}
+function delMaterial(id){ confirmDo('Удалить расходник?', ()=>{
+  DB.materials=DB.materials.filter(m=>m.id!==id); save(); closeSheet(); go('stock'); toast('Удалено'); }); }
+function delPiece(id){ confirmDo('Удалить расходник?', ()=>{
+  DB.pieces=DB.pieces.filter(p=>p.id!==id); save(); closeSheet(); go('stock'); toast('Удалено'); }); }
+
+/* ==================== УСЛУГИ ==================== */
+/* Услуга: {название, иконка, цена, время_мин, формула} — типовой рецепт. */
+function svcCost(s){
+  const lines=parseFormulaText(s.формула||'', DB.materials);
+  let c=0; lines.forEach(l=>{ const m=mById(l.материал_id); if(m) c+=l.граммы*gpr(m); });
+  return Math.round(c);
+}
+function renderServices(){
+  let h='<div class="sm muted" style="margin:2px 2px 10px">Услуга хранит цену и типовой рецепт. Нажмите «Провести работу», чтобы вставить формулу клиента.</div>';
+  if(!DB.services.length) h += emptyBox('✂️','Нет услуг','Добавьте первую услугу');
+  DB.services.forEach(s=>{
+    const cost=svcCost(s); const marg=(s.цена||0)-cost; const rp=s.цена?Math.round(marg/s.цена*100):0;
+    h += `<div class="card tap" onclick="svcSheet('${s.id}')">
+      <div class="row between">
+        <div class="grow">
+          <div class="title">${s.иконка||'✂️'} ${esc(s.название)}</div>
+          <div class="sm muted mono" style="margin-top:3px">${esc((s.формула||'').replace(/\n/g,' · '))||'без формулы'}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="title mono">${money(s.цена||0)}</div>
+          <div class="xs" style="color:var(--green)">маржа ${rp}%</div>
+        </div>
+      </div>
+    </div>`;
+  });
+  return h;
+}
+function svcSheet(id){
+  const s=sById(id);
+  const cost=svcCost(s); const marg=(s.цена||0)-cost;
+  const lines=parseFormulaText(s.формула||'', DB.materials);
+  const linesHtml=lines.map(l=>{const m=mById(l.материал_id);
+    return `<div class="kv"><span class="k">${m?esc(m.название):'⚠ '+esc(l.raw||'?')}</span><span class="v">${l.граммы} г${m?' · '+money(l.граммы*gpr(m)):''}</span></div>`;}).join('');
+  openSheet(esc(s.название), `
+    ${s.формула?`<div class="card" style="background:var(--brand-soft);border-color:#e0d6ff">
+      <div class="xs" style="color:var(--brand);font-weight:700;margin-bottom:4px">ТИПОВАЯ ФОРМУЛА</div>
+      <div class="sm mono">${esc(s.формула).replace(/\n/g,'<br>')}</div></div>`:''}
+    <div class="card">${linesHtml||'<div class="sm muted">Формула не задана</div>'}</div>
+    <div class="card">
+      <div class="kv"><span class="k">Себестоимость (по шаблону)</span><span class="v">${money(cost)}</span></div>
+      <div class="kv"><span class="k">Цена услуги</span><span class="v">${money(s.цена||0)}</span></div>
+      <div class="kv"><span class="k">Маржа</span><span class="v" style="color:var(--green)">${money(marg)} · ${s.цена?Math.round(marg/s.цена*100):0}%</span></div>
+      <div class="kv"><span class="k">Время</span><span class="v">${s.время_мин||0} мин</span></div>
+    </div>
+    <button class="btn" onclick="closeSheet();newWork('${id}')">▶️ Провести работу</button>`,
+    [`<button class="btn danger wauto" onclick="delService('${id}')">🗑</button>`,
+     `<button class="btn ghost" onclick="editService('${id}')">✏️ Изменить</button>`]);
+}
+function delService(id){ confirmDo('Удалить услугу?', ()=>{
+  DB.services=DB.services.filter(s=>s.id!==id); save(); closeSheet(); go('services'); toast('Удалено'); }); }
+function editService(id){
+  const s = id?sById(id):{id:uid('s'), название:'', иконка:'✂️', цена:2000, время_мин:60, формула:''};
+  openSheet(id?'Изменить услугу':'Новая услуга', `
+    <label class="fld"><span>Название</span><input id="se_name" value="${esc(s.название)}" placeholder="Окрашивание в один тон"></label>
+    <div class="fld-row">
+      <label class="fld"><span>Иконка</span><input id="se_icon" value="${esc(s.иконка||'✂️')}" maxlength="2"></label>
+      <label class="fld"><span>Цена, ₽</span><input id="se_price" type="number" inputmode="numeric" value="${s.цена||''}" placeholder="2500"></label>
+      <label class="fld"><span>Время, мин</span><input id="se_time" type="number" inputmode="numeric" value="${s.время_мин||''}" placeholder="90"></label>
+    </div>
+    <label class="fld"><span>Типовая формула (рецепт по умолчанию)</span>
+      <textarea id="se_formula" rows="3" style="resize:vertical" placeholder="6.0 (40гр) + 6% (60гр)">${esc(s.формула||'')}</textarea></label>
+    <div class="sm muted" style="margin-top:-4px">Подставится при расчёте работы — там правится под конкретного клиента. Пиши по одной строке на шаг: код/название, граммы, оксид %.</div>
+  `, [`<button class="btn ghost" onclick="closeSheet()">Отмена</button>`,
+      `<button class="btn" onclick="saveService('${id||''}','${s.id}')">Сохранить</button>`]);
+}
+function saveService(id, newId){
+  const g=x=>document.getElementById(x).value;
+  const name=g('se_name').trim(); if(!name) return toast('Введите название');
+  const obj={ id:id||newId, название:name, иконка:g('se_icon')||'✂️',
+    цена:+g('se_price')||0, время_мин:+g('se_time')||0, формула:g('se_formula').trim() };
+  if(id){ const i=DB.services.findIndex(s=>s.id===id); DB.services[i]=obj; }
+  else DB.services.push(obj);
+  save(); closeSheet(); go('services'); toast('Сохранено');
+}
+
+/* ==================== РАБОТЫ ==================== */
+function renderWorks(){
+  let h='';
+  const works=[...DB.works].sort((a,b)=>b.дата.localeCompare(a.дата));
+  if(!works.length) return emptyBox('📋','Пока нет работ','Заведите работу через вкладку «Услуги» → «Провести работу»');
+  // сводка за 30 дней
+  const rev=works.reduce((s,w)=>s+w.цена,0), cost=works.reduce((s,w)=>s+w.себестоимость,0);
+  h += `<div class="grid-stat" style="margin-bottom:6px">
+    <div class="stat"><div class="lab">Выручка (всего)</div><div class="num mono">${money(rev)}</div></div>
+    <div class="stat"><div class="lab">Маржа (всего)</div><div class="num mono" style="color:var(--green)">${money(rev-cost)}</div></div>
+  </div>`;
+  works.forEach(w=>{
+    const svc=sById(w.услуга_id);
+    h += `<div class="card tap" onclick="workSheet('${w.id}')">
+      <div class="row between">
+        <div class="grow">
+          <div class="title ell">${svc?svc.иконка:'✂️'} ${esc(w.услуга_назв)}</div>
+          <div class="sm muted">${fmtDate(w.дата)}${w.формула?' · '+esc(w.формула.split('\n')[0]):''}</div>
+        </div>
+        <div class="row" style="gap:10px">
+          <div style="text-align:right">
+            <div class="title mono">${money(w.цена)}</div>
+            <div class="xs" style="color:var(--green)">+${money(w.маржа)}</div>
+          </div>
+          <span class="iconbtn" onclick="event.stopPropagation();delWork('${w.id}')">🗑</span>
+        </div>
+      </div>
+    </div>`;
+  });
+  return h;
+}
+function workSheet(id){
+  const w=DB.works.find(x=>x.id===id);
+  let steps=w.шаги.map(s=>{
+    const m=mById(s.материал_id), ox=s.оксид_id?mById(s.оксид_id):null;
+    return `<div class="step-card">
+      <b>${esc(s.название||(m?m.название:''))}</b>
+      <div class="kv"><span class="k">${m?esc(m.название):'? материал'}</span><span class="v">${s.факт_граммы} г</span></div>
+      ${ox?`<div class="kv"><span class="k">${esc(ox.название)}</span><span class="v">${s.факт_оксида} г</span></div>`:''}
+    </div>`;
+  }).join('');
+  const pieces=(w.штучные||[]).map(p=>`<div class="kv"><span class="k">${esc(p.название)}</span><span class="v">${p.кол_во} шт</span></div>`).join('');
+  openSheet(esc(w.услуга_назв), `
+    <div class="sm muted" style="margin-bottom:10px">${fmtDate(w.дата)} · ${esc(w.услуга_назв)}</div>
+    ${w.формула?`<div class="card" style="background:var(--brand-soft);border-color:#e0d6ff"><div class="xs" style="color:var(--brand);font-weight:700;margin-bottom:4px">ФОРМУЛА ИЗ DIKIDI</div><div class="sm mono">${esc(w.формула)}</div></div>`:''}
+    ${steps}
+    ${pieces?`<div class="card">${pieces}</div>`:''}
+    <div class="card">
+      <div class="kv"><span class="k">Остаток смеси (в отход)</span><span class="v">${w.остаток_смеси_г} г</span></div>
+      <div class="kv"><span class="k">Себестоимость</span><span class="v">${money(w.себестоимость)}</span></div>
+      <div class="kv"><span class="k">Цена</span><span class="v">${money(w.цена)}</span></div>
+      <div class="kv"><span class="k">Маржа</span><span class="v" style="color:var(--green)">${money(w.маржа)} · ${w.цена?Math.round(w.маржа/w.цена*100):0}%</span></div>
+    </div>
+    <button class="btn soft" onclick="copyRecipe('${id}')">📋 Скопировать рецепт для DIKIDI</button>`,
+    [`<button class="btn danger wauto" onclick="delWork('${id}')">🗑 Удалить</button>`,
+     `<button class="btn ghost" onclick="closeSheet()">Закрыть</button>`]);
+}
+function recipeText(w){
+  const parts=(w.шаги||[]).map(s=>{
+    const m=mById(s.материал_id); let t=(m?m.название:'?')+' — '+s.факт_граммы+' г';
+    if(s.оксид_id){ const ox=mById(s.оксид_id); t+=' + '+(ox?ox.название:'оксид')+' — '+s.факт_оксида+' г'; }
+    return t;
+  });
+  let r=parts.join('\n');
+  if(w.остаток_смеси_г) r+='\nОстаток смеси: '+w.остаток_смеси_г+' г';
+  return r;
+}
+function copyRecipe(id){
+  const w=DB.works.find(x=>x.id===id); const t=recipeText(w);
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(t).then(()=>toast('Рецепт скопирован'),()=>fallbackCopy(t)); }
+  else fallbackCopy(t);
+}
+function fallbackCopy(t){
+  const ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); toast('Рецепт скопирован'); }catch(e){ toast('Скопируйте вручную'); }
+  document.body.removeChild(ta);
+}
+function delWork(id){
+  confirmDo('Удалить работу? Списанные материалы вернутся на склад.', ()=>{
+    const w=DB.works.find(x=>x.id===id);
+    // возврат на склад
+    (w.шаги||[]).forEach(s=>{ const m=mById(s.материал_id); if(m)m.остаток_г+=s.факт_граммы;
+      const ox=mById(s.оксид_id); if(ox)ox.остаток_г+=s.факт_оксида; });
+    (w.штучные||[]).forEach(p=>{ const pp=pById(p.id); if(pp)pp.остаток_шт+=p.кол_во; });
+    DB.works=DB.works.filter(x=>x.id!==id); save(); closeSheet(); go('works'); toast('Удалено, склад пополнен');
+  });
+}
+
+/* Мастер расчёта новой работы. Строка расхода = {материал_id, граммы}. */
+let _nw=null;
+function matName(id){ const m=mById(id); return m?m.название:'—'; }
+function newWork(svcId){
+  if(!DB.services.length) return toast('Сначала добавьте услугу');
+  _nw={услуга_id:svcId||DB.services[0].id, lines:[], штучные:[], остаток:0, формула:''};
+  loadNwLines();
+  drawNewWork();
+}
+function loadNwLines(){
+  const s=sById(_nw.услуга_id);
+  _nw.формула = s.формула||'';
+  _nw.цена = s.цена||0;
+  _nw.lines = _nw.формула ? parseFormulaText(_nw.формула, DB.materials) : [];
+}
+/* Разбор вставленной формулы в строки расхода. */
+function parseFormula(){
+  const el=document.getElementById('nw_formula');
+  if(el) _nw.формула=el.value;
+  const text=(_nw.формула||'').trim();
+  if(!text) return toast('Вставьте формулу');
+  const lines=parseFormulaText(text, DB.materials);
+  if(!lines.length) return toast('Не удалось распознать формулу');
+  _nw.lines=lines; drawNewWork();
+  const bad=lines.filter(l=>!l.материал_id).length;
+  toast(bad? `Распознано, уточните ${bad} ${plural(bad,'строку','строки','строк')}` : 'Формула распознана ✓');
+}
+function drawNewWork(){
+  const lineOpt=(id,candIds)=>{
+    let h='';
+    if(candIds&&candIds.length){
+      h+=candIds.map(cid=>{const c=mById(cid); return c?`<option value="${c.id}">${esc(c.название)} (${esc(c.бренд)})</option>`:'';}).join('');
+      h+=`<option value="" disabled>──────────</option>`;
+    }
+    h+=DB.materials.map(m=>`<option value="${m.id}" ${m.id===id?'selected':''}>${esc(m.название)}</option>`).join('');
+    return h;
+  };
+  const linesHtml=_nw.lines.map((ln,i)=>{
+    const m=mById(ln.материал_id);
+    const warn=m && ln.граммы>m.остаток_г;
+    const amb=!ln.материал_id && ln.кандидаты && ln.кандидаты.length;
+    const bad=!ln.материал_id && !amb;
+    const style = amb ? 'border-color:#f2ddb0;background:var(--amber-soft)'
+                : bad ? 'border-color:#f3bcbc;background:var(--red-soft)' : '';
+    const label = amb ? '<span style="color:var(--amber)">найдено несколько — выберите серию</span>'
+                : bad ? '<span style="color:var(--red)">не распознано — выберите</span>'
+                : (m?TYPE[m.тип]:'Материал');
+    return `<div class="step-card" style="${style}">
+      <div class="fld-row" style="gap:8px;align-items:flex-end">
+        <label class="fld" style="margin-bottom:0;flex:2">
+          <span>${label}</span>
+          <select onchange="_nw.lines[${i}].материал_id=this.value||null;_nw.lines[${i}].кандидаты=null;drawNewWork()">
+            <option value="">— выбрать —</option>${lineOpt(ln.материал_id, amb?ln.кандидаты:null)}
+          </select></label>
+        <label class="fld" style="margin-bottom:0;flex:1">
+          <span>Грамм ${warn?'<span style="color:var(--red)">!</span>':''}</span>
+          <input type="number" inputmode="numeric" value="${ln.граммы}" onchange="_nw.lines[${i}].граммы=+this.value;recalcNw()"></label>
+        <span class="iconbtn" style="margin-bottom:2px" onclick="_nw.lines.splice(${i},1);drawNewWork()">✕</span>
+      </div>
+      ${amb?`<div class="xs" style="margin-top:6px;color:var(--amber)">«${esc(ln.raw||'')}»: ${ln.кандидаты.map(cid=>{const c=mById(cid);return c?esc(c.название):'';}).filter(Boolean).join(' / ')}</div>`:''}
+      ${bad&&ln.raw?`<div class="xs muted" style="margin-top:6px">Из формулы: «${esc(ln.raw)}»</div>`:''}
+      ${m?`<div class="xs muted" style="margin-top:6px">Остаток ${fmtG(m.остаток_г)} г · ${money1(gpr(m))}/г · строка ${money(ln.граммы*gpr(m))}</div>`:''}
+    </div>`;
+  }).join('');
+
+  const piecesHtml=_nw.штучные.map((p,i)=>{
+    const pp=pById(p.id);
+    return `<div class="row between" style="padding:6px 0">
+      <span class="sm">${esc(pp?pp.название:'?')}</span>
+      <span class="row" style="gap:8px">
+        <input type="number" inputmode="numeric" value="${p.кол_во}" style="width:64px;padding:7px;text-align:center" onchange="_nw.штучные[${i}].кол_во=+this.value;recalcNw()">
+        <span class="iconbtn" onclick="_nw.штучные.splice(${i},1);drawNewWork()">✕</span>
+      </span></div>`;
+  }).join('');
+
+  openSheet('Расчёт работы', `
+    <label class="fld"><span>Услуга (для цены и статистики)</span>
+      <select onchange="_nw.услуга_id=this.value;loadNwLines();drawNewWork()">
+        ${DB.services.map(x=>`<option value="${x.id}" ${x.id===_nw.услуга_id?'selected':''}>${esc(x.название)}</option>`).join('')}
+      </select></label>
+
+    <div class="card" style="background:var(--brand-soft);border-color:#e0d6ff">
+      <div class="xs" style="color:var(--brand);font-weight:700;margin-bottom:6px">ФОРМУЛА ИЗ DIKIDI</div>
+      <textarea id="nw_formula" rows="2" placeholder="10.2 (20гр) + 9.23 (5гр) + 1,5% (60гр)" style="resize:vertical" onchange="_nw.формула=this.value">${esc(_nw.формула||'')}</textarea>
+      <div class="fld-row" style="margin-top:8px">
+        <button class="btn sm" style="flex:2" onclick="parseFormula()">🔎 Разобрать формулу</button>
+        <button class="btn ghost sm" style="flex:1" onclick="loadNwLines();drawNewWork()">↺ Шаблон услуги</button>
+      </div>
+    </div>
+
+    <div class="section-title"><span>Сверка расхода</span><span class="link" onclick="_nw.lines.push({материал_id:null,граммы:0});drawNewWork()">＋ строка</span></div>
+    ${linesHtml||'<div class="sm muted" style="margin-bottom:10px">Вставьте формулу или добавьте строки вручную</div>'}
+    <label class="fld"><span>Остаток смеси (в отход), г</span>
+      <input type="number" inputmode="numeric" value="${_nw.остаток}" onchange="_nw.остаток=+this.value"></label>
+
+    <div class="section-title"><span>Штучные расходники</span></div>
+    <div class="card" style="padding:8px 12px">
+      ${piecesHtml||'<div class="sm muted" style="padding:6px 0">Не добавлены</div>'}
+      <select onchange="if(this.value){addNwPiece(this.value);this.value=''}" style="margin-top:6px">
+        <option value="">＋ Добавить штучный…</option>
+        ${DB.pieces.map(p=>`<option value="${p.id}">${esc(p.название)}</option>`).join('')}
+      </select>
+    </div>
+
+    <label class="fld" style="margin-top:12px"><span>Цена услуги (доход), ₽</span>
+      <input id="nw_price" type="number" inputmode="numeric" value="${_nw.цена}" onchange="_nw.цена=+this.value;recalcNw()"></label>
+    <div class="card" id="nw_summary"></div>
+  `, [`<button class="btn ghost" onclick="closeSheet()">Отмена</button>`,
+      `<button class="btn" onclick="saveWork()">💾 Провести работу</button>`]);
+  recalcNw();
+}
+function addNwPiece(id){
+  if(_nw.штучные.find(x=>x.id===id)) return;
+  _nw.штучные.push({id, кол_во:1}); drawNewWork();
+}
+function nwCost(){
+  const шаги=_nw.lines.filter(l=>l.материал_id).map(l=>({материал_id:l.материал_id, факт_граммы:l.граммы, факт_оксида:0}));
+  const штучные=_nw.штучные.map(p=>{const pp=pById(p.id);return {...p, цена_за_штуку:pp?pp.цена_за_штуку:0};});
+  return calcCost({шаги, штучные}, DB.materials);
+}
+function recalcNw(){
+  const cost=nwCost();
+  const price=_nw.цена||0; const marg=price-cost;
+  const el=document.getElementById('nw_summary'); if(!el)return;
+  el.innerHTML=`
+    <div class="kv"><span class="k">Себестоимость</span><span class="v">${money(cost)}</span></div>
+    <div class="kv"><span class="k">Цена (доход)</span><span class="v">${money(price)}</span></div>
+    <div class="kv"><span class="k">Маржа</span><span class="v" style="color:${marg>=0?'var(--green)':'var(--red)'}">${money(marg)} · ${price?Math.round(marg/price*100):0}%</span></div>`;
+}
+function saveWork(){
+  const s=sById(_nw.услуга_id);
+  const bad=_nw.lines.filter(l=>!l.материал_id).length;
+  const шаги=_nw.lines.filter(l=>l.материал_id).map(l=>({название:matName(l.материал_id), материал_id:l.материал_id, факт_граммы:l.граммы, оксид_id:null, факт_оксида:0}));
+  if(!шаги.length) return toast('Добавьте хотя бы одну строку расхода');
+  const штучные=_nw.штучные.map(p=>{const pp=pById(p.id);return {id:p.id, название:pp?pp.название:'?', кол_во:p.кол_во, цена_за_штуку:pp?pp.цена_за_штуку:0};});
+  const today=new Date().toISOString().slice(0,10);
+  const w={ id:uid('w'), дата:today, услуга_id:s.id, услуга_назв:s.название,
+    шаги, остаток_смеси_г:_nw.остаток||0,
+    штучные, цена:_nw.цена||0, формула:_nw.формула||'' };
+  w.себестоимость=calcCost({шаги, штучные}, DB.materials);
+  w.маржа=w.цена-w.себестоимость;
+  шаги.forEach(st=>{ const m=mById(st.материал_id); if(m)m.остаток_г=Math.max(0,m.остаток_г-st.факт_граммы); });
+  штучные.forEach(p=>{ const pp=pById(p.id); if(pp)pp.остаток_шт=Math.max(0,pp.остаток_шт-p.кол_во); });
+  DB.works.push(w); save(); closeSheet(); go('works');
+  toast(bad? `Проведено, склад обновлён (${bad} нераспозн. строк пропущено)` : 'Работа проведена, склад обновлён');
+}
+
+/* ==================== ОТЧЁТ ==================== */
+function renderReport(){
+  const works=DB.works;
+  const rev=works.reduce((s,w)=>s+w.цена,0);
+  const cost=works.reduce((s,w)=>s+w.себестоимость,0);
+  const marg=rev-cost;
+  const avgMarg=works.length?Math.round(marg/rev*100):0;
+  const stockVal=DB.materials.reduce((s,m)=>s+m.остаток_г*gpr(m),0)
+               + DB.pieces.reduce((s,p)=>s+p.остаток_шт*p.цена_за_штуку,0);
+  const low=[...DB.materials.filter(m=>m.остаток_г<=m.мин_остаток_г),
+             ...DB.pieces.filter(p=>p.остаток_шт<=10)];
+
+  let h=`<div class="grid-stat">
+    <div class="stat"><div class="lab">Выручка</div><div class="num mono">${money(rev)}</div></div>
+    <div class="stat"><div class="lab">Себестоимость</div><div class="num mono">${money(cost)}</div></div>
+    <div class="stat"><div class="lab">Маржа</div><div class="num mono" style="color:var(--green)">${money(marg)}</div></div>
+    <div class="stat"><div class="lab">Рентабельность</div><div class="num mono">${avgMarg}%</div></div>
+  </div>`;
+
+  h+=`<div class="section-title"><span>Работ выполнено</span></div>
+    <div class="card"><div class="row between">
+      <span class="muted">Всего записей</span><span class="big mono">${works.length}</span></div>
+      <div class="row between" style="margin-top:6px">
+      <span class="muted">Средний чек</span><span class="title mono">${money(works.length?rev/works.length:0)}</span></div>
+    </div>`;
+
+  h+=`<div class="section-title"><span>Стоимость склада</span></div>
+    <div class="card"><div class="row between">
+      <span class="muted">Заморожено в остатках</span><span class="big mono">${money(stockVal)}</span></div>
+    </div>`;
+
+  // Закупки
+  const purchases=DB.purchases||[];
+  const purTotal=purchases.reduce((s,b)=>s+(b.сумма||0),0);
+  h+=`<div class="section-title"><span>Закупки материалов</span><span class="muted">${purchases.length}</span></div>
+    <div class="card">
+      <div class="kv"><span class="k">Потрачено на закупки</span><span class="v">${money(purTotal)}</span></div>
+      <div class="kv"><span class="k">Выручка − закупки</span><span class="v" style="color:${rev-purTotal>=0?'var(--green)':'var(--red)'}">${money(rev-purTotal)}</span></div>
+    </div>`;
+  if(purchases.length){
+    h+=`<div class="card" style="padding:8px 14px">`+
+      [...purchases].slice(-5).reverse().map(b=>`<div class="kv">
+        <span class="k">${fmtDate(b.дата)} · ${esc(b.название)} <span class="xs muted">(${esc(b.кол||'')})</span></span>
+        <span class="v">${money(b.сумма||0)}</span></div>`).join('')+
+      `</div>`;
+  } else {
+    h+=`<div class="sm muted" style="margin:2px 2px 0">Покупки записываются автоматически при «Приходе» на складе.</div>`;
+  }
+
+  h+=`<div class="section-title"><span>Требуют пополнения</span><span class="muted">${low.length}</span></div>`;
+  if(!low.length) h+=`<div class="card sm muted">Все запасы в норме ✅</div>`;
+  else low.forEach(x=>{
+    const isW='остаток_г' in x;
+    h+=`<div class="card"><div class="row between">
+      <div class="grow"><div class="title ell">${esc(x.название)}</div>
+        <div class="sm muted">${isW?`остаток ${fmtG(x.остаток_г)} г · мин ${x.мин_остаток_г} г`:`остаток ${x.остаток_шт} шт`}</div></div>
+      <span class="badge r">Заказать</span></div></div>`;
+  });
+
+  // разбивка по услугам
+  const bySvc={};
+  works.forEach(w=>{ bySvc[w.услуга_назв]=bySvc[w.услуга_назв]||{n:0,rev:0,cost:0,marg:0};
+    const o=bySvc[w.услуга_назв]; o.n++; o.rev+=w.цена; o.cost+=w.себестоимость; o.marg+=w.маржа; });
+  const keys=Object.keys(bySvc).sort((a,b)=>bySvc[b].rev-bySvc[a].rev);
+  if(keys.length){
+    h+=`<div class="section-title"><span>По услугам</span></div>`;
+    keys.forEach(k=>{const o=bySvc[k]; const rp=o.rev?Math.round(o.marg/o.rev*100):0;
+      const rc = rp<50?'var(--red)':rp<65?'var(--amber)':'var(--green)';
+      h+=`<div class="card">
+        <div class="row between">
+          <div class="grow"><div class="title ell">${esc(k)}</div>
+            <div class="sm muted">${o.n} ${plural(o.n,'работа','работы','работ')} · ср. чек ${money(o.rev/o.n)}</div></div>
+          <div style="text-align:right"><div class="title mono">${money(o.rev)}</div>
+          <div class="xs" style="color:${rc}">маржа ${money(o.marg)} · ${rp}%</div></div>
+        </div>
+        <div class="bar" style="margin-top:9px"><i style="width:${Math.max(3,Math.min(100,rp))}%;background:${rc}"></i></div>
+      </div>`;
+    });
+  }
+
+  // ДЫРЫ И ПОТЕРИ
+  let wasteG=0, wasteR=0;
+  works.forEach(w=>{
+    if(!w.остаток_смеси_г) return;
+    let totG=0, totC=0;
+    (w.шаги||[]).forEach(st=>{ const m=mById(st.материал_id); if(m){ totG+=st.факт_граммы; totC+=st.факт_граммы*gpr(m);
+      const ox=st.оксид_id?mById(st.оксид_id):null; if(ox){ totG+=st.факт_оксида; totC+=st.факт_оксида*gpr(ox);} } });
+    if(totG>0){ wasteG+=w.остаток_смеси_г; wasteR+=w.остаток_смеси_г/totG*totC; }
+  });
+  const lowMarg=keys.filter(k=>bySvc[k].rev && bySvc[k].marg/bySvc[k].rev<0.5);
+  h+=`<div class="section-title"><span>Дыры и потери</span></div>`;
+  h+=`<div class="card">
+    <div class="kv"><span class="k">Смесь в отход (всего)</span><span class="v">${fmtG(wasteG)} г ≈ ${money(wasteR)}</span></div>
+    <div class="kv"><span class="k">Позиций на исходе</span><span class="v" style="color:${low.length?'var(--red)':'var(--green)'}">${low.length}</span></div>
+    <div class="kv"><span class="k">Услуги с маржой < 50%</span><span class="v" style="color:${lowMarg.length?'var(--red)':'var(--green)'}">${lowMarg.length?lowMarg.join(', '):'нет'}</span></div>
+  </div>`;
+  if(wasteG>0) h+=`<div class="sm muted" style="margin:2px 2px 0">💡 ${fmtG(wasteG)} г краски ушло в отход — это ≈ ${money(wasteR)} «в мусорку». Стоит замешивать точнее.</div>`;
+
+  h+=`<div class="divider"></div>
+    <button class="btn ghost" onclick="resetData()">↺ Сбросить к тестовым данным</button>
+    <div style="height:12px"></div>`;
+  return h;
+}
+function resetData(){
+  confirmDo('Удалить все данные и загрузить тестовые заново?', ()=>{
+    DB=seed(); save(); go('stock'); toast('Данные сброшены'); }, 'Сбросить');
+}
+
+/* ==================== УТИЛИТЫ ==================== */
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function fmtG(g){ return (Math.round(g*10)/10).toLocaleString('ru-RU'); }
+function plural(n,a,b,c){ n=Math.abs(n)%100; const n1=n%10;
+  if(n>10&&n<20)return c; if(n1>1&&n1<5)return b; if(n1===1)return a; return c; }
+function fmtDate(iso){ const d=new Date(iso+'T00:00');
+  const m=['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];
+  const today=new Date().toISOString().slice(0,10);
+  if(iso===today)return 'Сегодня';
+  return d.getDate()+' '+m[d.getMonth()]; }
+function deepc(o){ return JSON.parse(JSON.stringify(o)); }
+function blankMatrix(val){ const o={}; LEN_K.forEach(l=>{o[l]={}; DEN_K.forEach(d=>{o[l][d]=deepc(val);});}); return o; }
+function emptyBox(em,t,s){ return `<div class="empty"><div class="em">${em}</div><div class="title">${t}</div><div class="sm">${s}</div></div>`; }
+
+/* Sheet */
+function openSheet(title, bodyHtml, footBtns){
+  document.getElementById('sheetTitle').innerHTML=title;
+  document.getElementById('sheetBody').innerHTML=bodyHtml;
+  document.getElementById('sheetFoot').innerHTML=(footBtns||[]).join('');
+  document.getElementById('sheetFoot').style.display=(footBtns&&footBtns.length)?'flex':'none';
+  document.getElementById('sheetBg').classList.add('open');
+  document.getElementById('sheet').classList.add('open');
+  document.getElementById('fabWrap').style.display='none';
+}
+function closeSheet(){
+  document.getElementById('sheetBg').classList.remove('open');
+  document.getElementById('sheet').classList.remove('open');
+  document.getElementById('fabWrap').style.display='';
+}
+/* Своё окно подтверждения (нативный confirm() блокируется в песочнице артефакта). */
+let _confirmCb=null;
+function confirmDo(msg, onYes, yesLabel){
+  document.getElementById('confirmMsg').textContent=msg;
+  const y=document.getElementById('confirmYes'); y.textContent=yesLabel||'Удалить';
+  _confirmCb=onYes;
+  document.getElementById('confirmBg').classList.add('open');
+}
+function closeConfirm(){ document.getElementById('confirmBg').classList.remove('open'); _confirmCb=null; }
+function doConfirm(){ const cb=_confirmCb; closeConfirm(); if(cb)cb(); }
+let _toastT;
+function toast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(_toastT); _toastT=setTimeout(()=>t.classList.remove('show'),1800);
+}
+
+/* Init */
+document.querySelectorAll('nav.tabbar button').forEach(b=>b.addEventListener('click',()=>go(b.dataset.tab)));
+load();
+go('stock');
+// Офлайн-режим при открытии по https (на file:// и в песочнице тихо пропускается)
+if('serviceWorker' in navigator && location.protocol==='https:'){
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>

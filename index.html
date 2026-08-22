@@ -487,7 +487,19 @@ function parseFormulaText(text, mats){
       const hit=byTokens(cand);
       if(hit.length>=1) cand=hit;
     }
-    if(grams==null){ const bn=norm.match(/(\d+(?:\.\d+)?)\s*$/); if(bn) grams=parseFloat(bn[1]); }
+    let bn=null;
+    if(grams==null){ bn=norm.match(/(\d+(?:\.\d+)?)\s*$/); if(bn) grams=parseFloat(bn[1]); }
+    // «шаг 1» vs «шаг 2»: голые цифры строки (кроме граммов/%/кода оттенка) дожимают выбор
+    if(cand.length>1){
+      let rest=norm;
+      [gm&&gm[0], pm&&pm[0], bn&&bn[0]].forEach(s=>{ if(s) rest=rest.replace(s,' '); });
+      rest=rest.replace(/\d{1,2}\.\d{1,2}/g,' ');
+      const digs=(rest.match(/\d{1,2}/g)||[]);
+      if(digs.length){
+        const hit=cand.filter(m=>digs.every(d=>new RegExp('(^|[^0-9.,])'+d+'([^0-9.,]|$)').test(m.название.toLowerCase())));
+        if(hit.length>=1) cand=hit;
+      }
+    }
     if(grams!=null || cand.length){
       lines.push({материал_id:cand.length===1?cand[0].id:null, граммы:grams||0, raw:ch,
         кандидаты:cand.length>1?cand.map(m=>m.id):null});
@@ -825,14 +837,14 @@ function matKind(k, m){
         ${Object.keys(TYPE).map(t=>`<option value="${t}" ${m&&m.тип===t?'selected':''}>${TYPE[t]}</option>`).join('')}
       </select></label>
       <div class="fld-row">
-        <label class="fld"><span>Объём упаковки, мл</span><input id="f_ml" type="number" inputmode="numeric" value="${m&&m.объём_мл?m.объём_мл:''}" placeholder="100"></label>
+        <label class="fld"><span>Объём упаковки, мл</span><input id="f_ml" type="number" inputmode="numeric" value="${m&&m.объём_мл?m.объём_мл:''}" placeholder="100" oninput="autoNet(this)"></label>
         <label class="fld"><span>Цена упаковки, ₽</span><input id="f_price" type="number" inputmode="numeric" value="${m?m.цена_упаковки:''}" placeholder="620"></label>
       </div>
       <div class="fld-row">
-        <label class="fld"><span>Вес полной упаковки, г</span><input id="f_net" type="number" inputmode="numeric" value="${m?m.нетто_г:''}" placeholder="93"></label>
-        <label class="fld"><span>Вес пустой тары, г</span><input id="f_tare" type="number" inputmode="numeric" value="${m&&m.тара_г?m.тара_г:''}" placeholder="15"></label>
+        <label class="fld"><span>Грамм в упаковке</span><input id="f_net" type="number" inputmode="numeric" value="${m?m.нетто_г:''}" placeholder="100"></label>
+        <label class="fld"><span>Вес пустой тары, г <span class="xs muted">(не обяз.)</span></span><input id="f_tare" type="number" inputmode="numeric" value="${m&&m.тара_г?m.тара_г:''}" placeholder="—"></label>
       </div>
-      <div class="sm muted" style="margin:-4px 0 12px">Вес полной упаковки взвешивается один раз. Цена за грамм = цена ÷ вес.</div>
+      <div class="sm muted" style="margin:-4px 0 12px">Цена за грамм = цена ÷ грамм в упаковке. Граммы прикидываются из мл (краска ≈ 0,93 г/мл — по замеру: тюбик 108 г − тара 15 г = 93 г на 100 мл). Взвесила точнее — впиши своё. Тара — только для сверки остатка на весах.</div>
       <div class="fld-row">
         <label class="fld"><span>Остаток, г</span><input id="f_rest" type="number" inputmode="numeric" value="${m?m.остаток_г:''}" placeholder="84"></label>
         <label class="fld"><span>Мин. остаток, г</span><input id="f_min" type="number" inputmode="numeric" value="${m?m.мин_остаток_г:30}" placeholder="30"></label>
@@ -849,6 +861,18 @@ function matKind(k, m){
       <label class="fld"><span>Остаток, шт</span><input id="f_rest" type="number" inputmode="numeric" placeholder="80"></label>`;
     foot.innerHTML = `<button class="btn" onclick="saveMaterialP('')">Сохранить</button>`;
   }
+}
+/* На этикетке пишут мл, работаем в граммах. Плотность НЕ равна 1:
+   замер по тюбику краски — 108 г брутто − 15 г тара = 93 г на заявленные 100 мл (0.93).
+   Подставляем прикидку по типу; если взвесила — вписывает своё, оно в приоритете. */
+const DENSITY={краска:0.93, оксид:1.05, смывка:1, уход:1, пудра:1};
+function autoNet(el){
+  const net=document.getElementById('f_net'); if(!net) return;
+  if(net.value && net.dataset.auto!=='1') return;   // введённое вручную не трогаем
+  const t=(document.getElementById('f_type')||{}).value||'краска';
+  const ml=+el.value||0;
+  net.value = ml ? Math.round(ml*(DENSITY[t]||1)) : '';
+  net.dataset.auto='1';
 }
 function saveMaterialW(id){
   const g=x=>document.getElementById(x).value;
@@ -990,7 +1014,7 @@ function renderWorks(){
   const seg=`<div class="seg" style="margin-bottom:12px">${W_PERIODS.map(([k,l])=>
     `<button class="${_wPeriod===k?'on':''}" onclick="setWPeriod('${k}')">${l}</button>`).join('')}</div>`;
 
-  if(!all.length) return seg+emptyBox('📋','Пока нет работ','Заведите работу через вкладку «Услуги» → «Провести работу»');
+  if(!all.length) return seg+emptyBox('📋','Пока нет работ','Кнопка «＋ Работа» внизу. Если услуг ещё нет — сначала заведите услугу');
 
   const from=periodFrom(_wPeriod);
   const works=all.filter(w=>w.дата>=from);

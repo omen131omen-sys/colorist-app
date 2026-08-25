@@ -641,10 +641,32 @@ function renderStock(){
   </div>`;
   return searchBox + `<div id="stockBody">${renderStockBody()}</div>`;
 }
+/* Порядок на складе. Краски — как в палитре: уровень от светлого к тёмному (10→1),
+   корректоры 0.xx в конце; внутри уровня тон по возрастанию (6.0, 6.1, 6.2, 6.21, 6.32, 6.4).
+   Оксиды — по проценту от слабого к сильному. Остальное — по алфавиту. */
+function sortMats(list){
+  return list.slice().sort((a,b)=>{
+    if(a.тип==='оксид' && b.тип==='оксид'){
+      const pa=parseFloat(_matPct(a)), pb=parseFloat(_matPct(b));
+      if(isFinite(pa) && isFinite(pb) && pa!==pb) return pa-pb;
+      return a.название.localeCompare(b.название,'ru');
+    }
+    const ca=_matCode(a), cb=_matCode(b);
+    if(ca && cb){
+      const [la,ta='']=ca.split('.'), [lb,tb='']=cb.split('.');
+      if(+la!==+lb) return +lb-+la;              // уровень: 10 → 1, ноль-корректоры сами уедут вниз
+      if(ta!==tb) return ta<tb?-1:1;             // тон как строка: 2 < 21 < 32 < 4
+      return a.название.localeCompare(b.название,'ru');
+    }
+    if(ca && !cb) return -1;                     // с кодом — выше
+    if(!ca && cb) return 1;
+    return a.название.localeCompare(b.название,'ru');
+  });
+}
 function renderStockBody(){
   const q=_stockQuery.trim().toLowerCase();
   if(q){
-    const mm=DB.materials.filter(m=>(m.название+' '+m.бренд+' '+TYPE[m.тип]).toLowerCase().includes(q));
+    const mm=sortMats(DB.materials.filter(m=>(m.название+' '+m.бренд+' '+TYPE[m.тип]).toLowerCase().includes(q)));
     if(!mm.length) return `<div class="empty"><div class="em">🔍</div><div class="sm">Ничего не найдено по «${esc(_stockQuery)}»</div></div>`;
     return `<div class="sm muted" style="margin:2px 2px 8px">Найдено: ${mm.length}</div><div class="mgrid">${mm.map(matCardHtml).join('')}</div>`;
   }
@@ -663,7 +685,7 @@ function renderStockBody(){
     {k:'уход', ic:'💆', title:'Уход'},
   ];
   groups.forEach(g=>{
-    const items = DB.materials.filter(m=>m.тип===g.k);
+    const items = sortMats(DB.materials.filter(m=>m.тип===g.k));
     if(!items.length) return;
     const lowN = items.filter(m=>m.остаток_г<=m.мин_остаток_г).length;
     const open = !!_stockOpen[g.k];
@@ -716,7 +738,7 @@ function toggleStock(k){
 }
 /* Список «Заказать» — позиции на исходе, копируется одной кнопкой. */
 function orderList(){
-  return DB.materials.filter(m=>m.остаток_г<=m.мин_остаток_г)
+  return sortMats(DB.materials.filter(m=>m.остаток_г<=m.мин_остаток_г))
     .map(m=>({название:m.название, бренд:m.бренд, текст:`осталось ${fmtG(m.остаток_г)} г (мин ${m.мин_остаток_г})`}));
 }
 function orderSheet(){
@@ -1237,7 +1259,7 @@ function drawNewWork(){
       h+=`<option value="" disabled>──────────</option>`;
     }
     // бренд в подписи — иначе «Оксид 6%» от разных марок не различить
-    h+=DB.materials.map(m=>{
+    h+=sortMats(DB.materials).map(m=>{
       const br=(m.бренд||'').trim();
       const label=(br && br!=='—' && !m.название.toLowerCase().includes(br.toLowerCase().split(/\s+/)[0]))
         ? `${m.название} · ${br}` : m.название;

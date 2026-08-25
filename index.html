@@ -847,6 +847,7 @@ function matKind(k, m){
   document.querySelectorAll('#matKind button').forEach(b=>b.classList.toggle('on', b.dataset.k===k));
   const f = document.getElementById('matForm');
   const foot = document.getElementById('sheetFoot');
+  foot.style.display='flex';   // openSheet скрыл подвал (кнопки пришли пустыми) — возвращаем
   if(k==='w'){
     f.innerHTML = `
       <label class="fld"><span>Название</span><input id="f_name" value="${m?esc(m.название):''}" placeholder="Краска 6.0"></label>

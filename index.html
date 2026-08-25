@@ -372,13 +372,13 @@ function seed(){
 
   // [бренд, название, остаток_г, цена, объём_мл, тара_г, нетто_г]
   const oxRows = [
-    ['Helen Seward','Оксид 1.5%',5000,2800,5000,150,5350],
-    ['Helen Seward','Оксид 3%',5000,2800,5000,150,5350],
-    ['Helen Seward','Оксид 6%',345,2800,5000,150,5350],
-    ['OLLIN','Оксид 1% крем-эмульсия',615,600,500,50,520],
-    ['Londa','Оксид 6% 20vol',378,950,1000,60,1000],
-    ['Londa','Оксид 12% 40vol',1117,950,1000,60,1000],
-    ['Londa','Оксид 1.9% 6vol',483,950,1000,60,1000],
+    ['Helen Seward','Оксид 1.5% · Helen Seward',5000,2800,5000,150,5350],
+    ['Helen Seward','Оксид 3% · Helen Seward',5000,2800,5000,150,5350],
+    ['Helen Seward','Оксид 6% · Helen Seward',345,2800,5000,150,5350],
+    ['OLLIN','Оксид 1% крем-эмульсия · OLLIN',615,600,500,50,520],
+    ['Londa','Оксид 6% 20vol · Londa',378,950,1000,60,1000],
+    ['Londa','Оксид 12% 40vol · Londa',1117,950,1000,60,1000],
+    ['Londa','Оксид 1.9% 6vol · Londa',483,950,1000,60,1000],
   ];
   const oxids = oxRows.map(r=>({id:nid('o'), бренд:r[0], название:r[1], тип:'оксид',
     объём_мл:r[4], тара_г:r[5], нетто_г:r[6], цена_упаковки:r[3], остаток_г:r[2], мин_остаток_г:500}));
@@ -535,6 +535,14 @@ function load(){
       сумма:b.сумма||0, заметка:(b.название||'Закупка')+(b.кол?' · '+b.кол:''), материал_id:b.материал_id||null}));
   }
   if(!DB.equipment) DB.equipment=[];
+  // Оксиды у разных брендов зовутся одинаково («Оксид 6%»), в выпадашке было не различить —
+  // дописываем бренд в название. Идемпотентно: второй раз не добавится.
+  (DB.materials||[]).forEach(m=>{
+    if(m.тип!=='оксид') return;
+    const br=(m.бренд||'').trim(); if(!br || br==='—') return;
+    const key=br.toLowerCase().split(/\s+/)[0];
+    if(!m.название.toLowerCase().includes(key)) m.название = m.название.trim()+' · '+br;
+  });
   // «Еда» была отдельной категорией не с самого начала — переносим то, что писали в «прочее».
   (DB.expenses||[]).forEach(e=>{
     if(e.категория==='прочее' && /^\s*(еда|обед|перекус|продукт\w*)\s*$/i.test(e.заметка||'')) e.категория='еда';
@@ -1227,7 +1235,13 @@ function drawNewWork(){
       h+=candIds.map(cid=>{const c=mById(cid); return c?`<option value="${c.id}">${esc(c.название)} (${esc(c.бренд)})</option>`:'';}).join('');
       h+=`<option value="" disabled>──────────</option>`;
     }
-    h+=DB.materials.map(m=>`<option value="${m.id}" ${m.id===id?'selected':''}>${esc(m.название)}</option>`).join('');
+    // бренд в подписи — иначе «Оксид 6%» от разных марок не различить
+    h+=DB.materials.map(m=>{
+      const br=(m.бренд||'').trim();
+      const label=(br && br!=='—' && !m.название.toLowerCase().includes(br.toLowerCase().split(/\s+/)[0]))
+        ? `${m.название} · ${br}` : m.название;
+      return `<option value="${m.id}" ${m.id===id?'selected':''}>${esc(label)}</option>`;
+    }).join('');
     return h;
   };
   const linesHtml=_nw.lines.map((ln,i)=>{

@@ -410,14 +410,14 @@ function seed(){
   const materials = [...paints, ...oxids, ...powders, ...care];
   const pieces = []; // штучные учитываются как «Расходники» в Расходе, не на складе
 
-  // Услуги: название, цена, время и типовая формула (шаблон рецепта).
+  // Услуги — прайс-лист: название, вилка цены, время. Рецепт у каждого клиента свой.
   const services = [
-    {id:'s1', название:'Окрашивание в один тон', иконка:'капля', цена:2500, время_мин:90,
-     формула:'6.0 (40гр) + хс 6% (60гр)'},
-    {id:'s2', название:'Осветление + тонирование', иконка:'искра', цена:4200, время_мин:120,
-     формула:'Пудра (30гр) + хс 6% (60гр)\n8.3 (20гр) + 1,5% (40гр)'},
-    {id:'s3', название:'Уход/ботокс', иконка:'лист', цена:1500, время_мин:40,
-     формула:'Бонд-защита (25гр)'},
+    {id:'s1', название:'Окрашивание в один тон', иконка:'капля', цена_от:2500, цена_до:3500, время_мин:90,
+     _демоформула:'6.0 (40гр) + хс 6% (60гр)'},
+    {id:'s2', название:'Осветление + тонирование', иконка:'искра', цена_от:4200, цена_до:6000, время_мин:120,
+     _демоформула:'Пудра (30гр) + хс 6% (60гр)\n8.3 (20гр) + 1,5% (40гр)'},
+    {id:'s3', название:'Уход/ботокс', иконка:'лист', цена_от:1500, цена_до:0, время_мин:40,
+     _демоформула:'Бонд-защита (25гр)'},
   ];
 
   const works = [
@@ -425,10 +425,11 @@ function seed(){
     mkWork(services[1], materials, -2, 12),
     mkWork(services[0], materials, -1, 5),
   ];
+  services.forEach(s=>delete s._демоформула);   // в услугах рецепт не хранится
   return {materials, pieces, services, works, purchases:[], _v:4};
 
   function mkWork(svc, mats, dayOffset, waste){
-    const lines = parseFormulaText(svc.формула, mats);
+    const lines = parseFormulaText(svc._демоформула, mats);
     const steps = lines.filter(l=>l.материал_id).map(l=>({
       название:(mats.find(m=>m.id===l.материал_id)||{}).название||'',
       материал_id:l.материал_id, факт_граммы:l.граммы, оксид_id:null, факт_оксида:0
@@ -437,7 +438,7 @@ function seed(){
     const w = {
       id:uid('w'), дата:d.toISOString().slice(0,10), услуга_id:svc.id, услуга_назв:svc.название,
       шаги:steps, остаток_смеси_г:waste||0, штучные:[], время:svc.время_мин||0,
-      цена: svc.цена, формула: svc.формула,
+      цена: svc.цена_от, формула: svc._демоформула,
     };
     w.себестоимость = calcCost(w, mats);
     w.маржа = w.цена - w.себестоимость;
@@ -534,6 +535,15 @@ function load(){
       сумма:b.сумма||0, заметка:(b.название||'Закупка')+(b.кол?' · '+b.кол:''), материал_id:b.материал_id||null}));
   }
   if(!DB.equipment) DB.equipment=[];
+  // «Еда» была отдельной категорией не с самого начала — переносим то, что писали в «прочее».
+  (DB.expenses||[]).forEach(e=>{
+    if(e.категория==='прочее' && /^\s*(еда|обед|перекус|продукт\w*)\s*$/i.test(e.заметка||'')) e.категория='еда';
+  });
+  // Услуги стали прайс-листом: одна «цена» → вилка «от–до», типовой рецепт больше не хранится.
+  (DB.services||[]).forEach(s=>{
+    if(s.цена_от==null){ s.цена_от=s.цена||0; s.цена_до=0; }
+    delete s.цена; delete s.формула;
+  });
 }
 function save(){ DB._updatedAt=Date.now(); localStorage.setItem(KEY, JSON.stringify(DB)); scheduleSync(); }
 function mById(id){ return DB.materials.find(m=>m.id===id); }
@@ -544,7 +554,7 @@ function sById(id){ return DB.services.find(s=>s.id===id); }
 let TAB = 'stock';
 const TABS = {
   stock:   {t:'Склад', s:'Материалы и остатки', r:renderStock},
-  services:{t:'Услуги', s:'Прайс и рецепты', r:renderServices},
+  services:{t:'Услуги', s:'Прайс-лист', r:renderServices},
   works:   {t:'Работы', s:'Журнал по дням', r:renderWorks},
   expenses:{t:'Расход', s:'Траты и оборудование', r:renderExpenses},
   report:  {t:'Отчёт', s:'Аналитика', r:renderReport},
@@ -916,29 +926,57 @@ function delPiece(id){ confirmDo('Удалить расходник?', ()=>{
   DB.pieces=DB.pieces.filter(p=>p.id!==id); save(); closeSheet(); go('stock'); toast('Удалено'); }); }
 
 /* ==================== УСЛУГИ ==================== */
-/* Услуга: {название, иконка, цена, время_мин, формула} — типовой рецепт. */
-function svcCost(s){
-  const lines=parseFormulaText(s.формула||'', DB.materials);
-  let c=0; lines.forEach(l=>{ const m=mById(l.материал_id); if(m) c+=l.граммы*gpr(m); });
-  return Math.round(c);
+/* Услуга — строка прайс-листа: {название, иконка, цена_от, цена_до, время_мин}.
+   Рецепт тут не хранится: формула у каждого клиента своя, её вставляют при расчёте работы.
+   svcFrom/svcTo понимают и старый формат (одно поле «цена»). */
+function svcFrom(s){ return s.цена_от!=null ? (s.цена_от||0) : (s.цена||0); }
+function svcTo(s){ return s.цена_до ? s.цена_до : svcFrom(s); }
+function svcPriceText(s){
+  const a=svcFrom(s), b=svcTo(s);
+  return b>a ? money(a)+' – '+money(b) : money(a);
+}
+function svcTimeTo(s){ return s.время_до ? s.время_до : (s.время_мин||0); }
+function fmtHrs(min){
+  if(!min) return '—';
+  if(min<60) return min+' мин';
+  const h=min/60;
+  return (Math.round(h*10)/10).toLocaleString('ru-RU')+' ч';
+}
+function svcTimeText(s){
+  const a=s.время_мин||0, b=svcTimeTo(s);
+  if(!a) return '—';
+  return b>a ? fmtHrs(a)+' – '+fmtHrs(b) : fmtHrs(a);
+}
+/* Факт по услуге из журнала работ — прайс показывает реальные цифры, а не гипотетические. */
+function svcStats(s){
+  const ws=DB.works.filter(w=>w.услуга_id===s.id);
+  if(!ws.length) return null;
+  const rev=ws.reduce((x,w)=>x+(w.цена||0),0);
+  const cost=ws.reduce((x,w)=>x+(w.себестоимость||0),0);
+  return {n:ws.length, rev, cost, avg:Math.round(rev/ws.length),
+          marg:rev-cost, margPct:rev?Math.round((rev-cost)/rev*100):0,
+          min:Math.min(...ws.map(w=>w.цена||0)), max:Math.max(...ws.map(w=>w.цена||0))};
 }
 function renderServices(){
-  let h='<div class="sm muted" style="margin:2px 2px 10px">Услуга хранит цену и типовой рецепт. Нажмите «Провести работу», чтобы вставить формулу клиента.</div>';
+  let h='<div class="sm muted" style="margin:2px 2px 10px">Прайс-лист. Цены ориентировочные — точную сумму вписываешь при проведении работы.</div>';
   if(!DB.services.length) h += emptyBox('✂️','Нет услуг','Добавьте первую услугу');
   DB.services.forEach(s=>{
-    const cost=svcCost(s); const marg=(s.цена||0)-cost; const rp=s.цена?Math.round(marg/s.цена*100):0;
+    const st=svcStats(s);
+    const sub = st ? `${st.n} ${plural(st.n,'работа','работы','работ')} · ср. чек ${money(st.avg)}`
+                   : (s.время_мин?svcTimeText(s):'ещё не проводилась');
     h += `<div class="card tap" onclick="svcSheet('${s.id}')">
       <div class="row between">
         <div class="row grow" style="gap:11px; min-width:0">
           ${svcCircle(s)}
           <div class="grow" style="min-width:0">
             <div class="title ell">${esc(s.название)}</div>
-            <div class="sm muted mono ell" style="margin-top:2px">${esc((s.формула||'').replace(/\n/g,' · '))||'без формулы'}</div>
+            <div class="sm muted ell" style="margin-top:2px">${sub}</div>
           </div>
         </div>
         <div style="text-align:right; flex:none; padding-left:8px">
-          <div class="title mono">${money(s.цена||0)}</div>
-          <div class="xs" style="color:${margLevel(marg,s.цена).c}">маржа ${rp}%</div>
+          <div class="title mono" style="white-space:nowrap">${svcPriceText(s)}</div>
+          ${st?`<div class="xs" style="color:${margLevel(st.marg,st.rev).c}">маржа ${st.margPct}%</div>`
+              :(s.время_мин?'':`<div class="xs muted">${s.время_мин||0} мин</div>`)}
         </div>
       </div>
     </div>`;
@@ -947,21 +985,27 @@ function renderServices(){
 }
 function svcSheet(id){
   const s=sById(id);
-  const cost=svcCost(s); const marg=(s.цена||0)-cost;
-  const lines=parseFormulaText(s.формула||'', DB.materials);
-  const linesHtml=lines.map(l=>{const m=mById(l.материал_id);
-    return `<div class="kv"><span class="k">${m?esc(m.название):'⚠ '+esc(l.raw||'?')}</span><span class="v">${l.граммы} г${m?' · '+money(l.граммы*gpr(m)):''}</span></div>`;}).join('');
+  const st=svcStats(s);
   openSheet(esc(s.название), `
-    ${s.формула?`<div class="card" style="background:var(--brand-soft);border-color:#e0d6ff">
-      <div class="xs" style="color:var(--brand);font-weight:700;margin-bottom:4px">ТИПОВАЯ ФОРМУЛА</div>
-      <div class="sm mono">${esc(s.формула).replace(/\n/g,'<br>')}</div></div>`:''}
-    <div class="card">${linesHtml||'<div class="sm muted">Формула не задана</div>'}</div>
     <div class="card">
-      <div class="kv"><span class="k">Себестоимость (по шаблону)</span><span class="v">${money(cost)}</span></div>
-      <div class="kv"><span class="k">Цена услуги</span><span class="v">${money(s.цена||0)}</span></div>
-      <div class="kv"><span class="k">Маржа</span><span class="v" style="color:var(--green)">${money(marg)} · ${s.цена?Math.round(marg/s.цена*100):0}%</span></div>
-      <div class="kv"><span class="k">Время</span><span class="v">${s.время_мин||0} мин</span></div>
+      <div class="kv"><span class="k">Цена по прайсу</span><span class="v">${svcPriceText(s)}</span></div>
+      <div class="kv"><span class="k">Время</span><span class="v">${svcTimeText(s)}</span></div>
+      ${(()=>{ // в час: худший расклад (мин. цена за макс. время) — лучший (макс. цена за мин. время)
+        if(!s.время_мин||!svcFrom(s)) return '';
+        const lo=svcFrom(s)/(svcTimeTo(s)/60), hi=svcTo(s)/(s.время_мин/60);
+        return `<div class="kv"><span class="k">Выходит в час</span><span class="v">${Math.round(hi)>Math.round(lo)?money(lo)+' – '+money(hi):money(hi)}/ч</span></div>`;
+      })()}
+      ${s.заметка?`<div class="sm muted" style="padding-top:8px">📌 ${esc(s.заметка)}</div>`:''}
     </div>
+    ${st?`<div class="section-title"><span>Факт по журналу</span></div>
+    <div class="card">
+      <div class="kv"><span class="k">Проведено работ</span><span class="v">${st.n}</span></div>
+      <div class="kv"><span class="k">Средний чек</span><span class="v">${money(st.avg)}${st.max>st.min?` <span class="xs muted">(${money(st.min)}–${money(st.max)})</span>`:''}</span></div>
+      <div class="kv"><span class="k">Материалы съели</span><span class="v">${money(st.cost)}</span></div>
+      <div class="kv"><span class="k">Заработано чистыми</span><span class="v" style="color:${margLevel(st.marg,st.rev).c}">${money(st.marg)} · ${st.margPct}%</span></div>
+      <div class="kv"><span class="k">Всего выручки</span><span class="v">${money(st.rev)}</span></div>
+    </div>`
+    :`<div class="sm muted" style="margin:2px 2px 12px">Работ по этой услуге ещё не было — как проведёшь первую, тут появится реальный средний чек и маржа.</div>`}
     <button class="btn" onclick="closeSheet();newWork('${id}')">▶️ Провести работу</button>`,
     [`<button class="btn danger wauto" onclick="delService('${id}')">🗑</button>`,
      `<button class="btn ghost" onclick="editService('${id}')">✏️ Изменить</button>`]);
@@ -971,7 +1015,7 @@ function delService(id){ confirmDo('Удалить услугу?', ()=>{
 let _seIcon='капля';
 function pickSeIcon(k){ _seIcon=k; document.querySelectorAll('#seIcons .icpick').forEach(b=>b.classList.toggle('on', b.dataset.k===k)); }
 function editService(id){
-  const s = id?sById(id):{id:uid('s'), название:'', иконка:'капля', цена:2000, время_мин:60, формула:''};
+  const s = id?sById(id):{id:uid('s'), название:'', иконка:'капля', цена_от:2000, цена_до:0, время_мин:60};
   _seIcon = SVC_ICONS[s.иконка]?s.иконка:'капля';
   openSheet(id?'Изменить услугу':'Новая услуга', `
     <label class="fld"><span>Название</span><input id="se_name" value="${esc(s.название)}" placeholder="Окрашивание в один тон"></label>
@@ -979,20 +1023,30 @@ function editService(id){
       <div id="seIcons" class="icrow">${SVC_ICON_KEYS.map(k=>`<button type="button" class="icpick ${k===_seIcon?'on':''}" data-k="${k}" onclick="pickSeIcon('${k}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${SVC_ICONS[k]}</svg></button>`).join('')}</div>
     </label>
     <div class="fld-row">
-      <label class="fld"><span>Цена, ₽</span><input id="se_price" type="number" inputmode="numeric" value="${s.цена||''}" placeholder="2500"></label>
-      <label class="fld"><span>Время, мин</span><input id="se_time" type="number" inputmode="numeric" value="${s.время_мин||''}" placeholder="90"></label>
+      <label class="fld"><span>Цена от, ₽</span><input id="se_price" type="number" inputmode="numeric" value="${svcFrom(s)||''}" placeholder="2500"></label>
+      <label class="fld"><span>Цена до, ₽ <span class="xs muted">(не обяз.)</span></span><input id="se_price2" type="number" inputmode="numeric" value="${svcTo(s)>svcFrom(s)?svcTo(s):''}" placeholder="—"></label>
     </div>
-    <label class="fld"><span>Типовая формула (рецепт по умолчанию)</span>
-      <textarea id="se_formula" rows="3" style="resize:vertical" placeholder="6.0 (40гр) + 6% (60гр)">${esc(s.формула||'')}</textarea></label>
-    <div class="sm muted" style="margin-top:-4px">Подставится при расчёте работы — там правится под конкретного клиента. Пиши по одной строке на шаг: код/название, граммы, оксид %.</div>
+    <div class="fld-row">
+      <label class="fld"><span>Время от, мин</span><input id="se_time" type="number" inputmode="numeric" value="${s.время_мин||''}" placeholder="90"></label>
+      <label class="fld"><span>Время до, мин <span class="xs muted">(не обяз.)</span></span><input id="se_time2" type="number" inputmode="numeric" value="${svcTimeTo(s)>(s.время_мин||0)?svcTimeTo(s):''}" placeholder="—"></label>
+    </div>
+    <label class="fld"><span>Примечание <span class="xs muted">(не обяз.)</span></span>
+      <input id="se_note" value="${esc(s.заметка||'')}" placeholder="доплата за густоту/длину до 5000 ₽"></label>
+    <div class="sm muted" style="margin-top:-4px">Это прайс-лист: цена ориентировочная. «До» заполняй, если цена или время плавают — покажется вилкой. Точную сумму впишешь, когда будешь проводить работу.</div>
   `, [`<button class="btn ghost" onclick="closeSheet()">Отмена</button>`,
       `<button class="btn" onclick="saveService('${id||''}','${s.id}')">Сохранить</button>`]);
 }
 function saveService(id, newId){
   const g=x=>document.getElementById(x).value;
   const name=g('se_name').trim(); if(!name) return toast('Введите название');
+  let от=+g('se_price')||0, до=+g('se_price2')||0;
+  if(до && до<от) [от,до]=[до,от];          // перепутали местами — сами поправим
+  if(до===от) до=0;                          // одинаковые = фиксированная цена
+  let тот=+g('se_time')||0, тдо=+g('se_time2')||0;
+  if(тдо && тдо<тот) [тот,тдо]=[тдо,тот];
+  if(тдо===тот) тдо=0;
   const obj={ id:id||newId, название:name, иконка:_seIcon||'капля',
-    цена:+g('se_price')||0, время_мин:+g('se_time')||0, формула:g('se_formula').trim() };
+    цена_от:от, цена_до:до, время_мин:тот, время_до:тдо, заметка:g('se_note').trim() };
   if(id){ const i=DB.services.findIndex(s=>s.id===id); DB.services[i]=obj; }
   else DB.services.push(obj);
   save(); closeSheet(); go('services'); toast('Сохранено');
@@ -1148,12 +1202,11 @@ function newWork(svcId){
   loadNwLines();
   drawNewWork();
 }
+/* Услуга даёт только ориентир по цене и времени — рецепт вставляют из DIKIDI под клиента. */
 function loadNwLines(){
   const s=sById(_nw.услуга_id);
-  _nw.формула = s.формула||'';
-  _nw.цена = s.цена||0;
+  _nw.цена = svcFrom(s);
   _nw.время = s.время_мин||0;
-  _nw.lines = _nw.формула ? parseFormulaText(_nw.формула, DB.materials) : [];
 }
 /* Разбор вставленной формулы в строки расхода. */
 function parseFormula(){
@@ -1225,10 +1278,7 @@ function drawNewWork(){
     <div class="card" style="background:var(--brand-soft);border-color:#e0d6ff">
       <div class="xs" style="color:var(--brand);font-weight:700;margin-bottom:6px">ФОРМУЛА ИЗ DIKIDI</div>
       <textarea id="nw_formula" rows="2" placeholder="10.2 (20гр) + 9.23 (5гр) + 1,5% (60гр)" style="resize:vertical" onchange="_nw.формула=this.value">${esc(_nw.формула||'')}</textarea>
-      <div class="fld-row" style="margin-top:8px">
-        <button class="btn sm" style="flex:2" onclick="parseFormula()">🔎 Разобрать формулу</button>
-        <button class="btn ghost sm" style="flex:1" onclick="loadNwLines();drawNewWork()">↺ Шаблон услуги</button>
-      </div>
+      <button class="btn sm" style="margin-top:8px" onclick="parseFormula()">🔎 Разобрать формулу</button>
     </div>
 
     <div class="section-title"><span>Сверка расхода</span><span class="link" onclick="_nw.lines.push({материал_id:null,граммы:0});drawNewWork()">＋ строка</span></div>
@@ -1236,7 +1286,7 @@ function drawNewWork(){
     <label class="fld"><span>Остаток смеси (в отход), г</span>
       <input type="number" inputmode="numeric" value="${_nw.остаток}" onchange="_nw.остаток=+this.value"></label>
 
-    <label class="fld" style="margin-top:12px"><span>Цена услуги (доход), ₽</span>
+    <label class="fld" style="margin-top:12px"><span>Сколько взяла с клиента, ₽${(()=>{const s=sById(_nw.услуга_id);return s&&svcTo(s)>svcFrom(s)?` <span class="xs muted">(по прайсу ${svcPriceText(s)})</span>`:'';})()}</span>
       <input id="nw_price" type="number" inputmode="numeric" value="${_nw.цена}" onchange="_nw.цена=+this.value;recalcNw()"></label>
     <label class="fld"><span>Время работы, мин (для «доход/час»)</span>
       <input type="number" inputmode="numeric" value="${_nw.время||''}" placeholder="90" onchange="_nw.время=+this.value"></label>
@@ -1311,8 +1361,8 @@ function saveWork(){
 
 /* ==================== РАСХОД ==================== */
 // «материалы» приходят ТОЛЬКО со склада (Приход) — в ручной ввод не даём, чтобы не путаться.
-const EXP_CATS={материалы:'Материалы', расходники:'Расходники', косметика:'Косметика/уход', мелочь:'Мелочь/сервис', такси:'Такси', аренда:'Аренда', реклама:'Реклама', обучение:'Обучение', прочее:'Прочее'};
-const EXP_MANUAL_CATS=['расходники','косметика','мелочь','такси','аренда','реклама','обучение','прочее'];
+const EXP_CATS={материалы:'Материалы', расходники:'Расходники', косметика:'Косметика/уход', мелочь:'Мелочь/сервис', еда:'Еда', такси:'Такси', аренда:'Аренда', реклама:'Реклама', обучение:'Обучение', прочее:'Прочее'};
+const EXP_MANUAL_CATS=['расходники','косметика','мелочь','еда','такси','аренда','реклама','обучение','прочее'];
 const EXP_CAT_KEYS=Object.keys(EXP_CATS);
 let _expPeriod='month';
 function setExpPeriod(p){ _expPeriod=p; document.getElementById('view').innerHTML=renderExpenses(); }
@@ -1328,7 +1378,7 @@ function renderExpenses(){
   h+=`<div class="stat" style="margin-bottom:6px"><div class="lab">Расход за период</div><div class="num mono">${money(total)}</div></div>`;
   const catChips=EXP_CAT_KEYS.filter(k=>byCat[k]).map(k=>`<span class="chip">${EXP_CATS[k]}: ${money(byCat[k])}</span>`).join('');
   if(catChips) h+=`<div style="margin:2px 0 10px">${catChips}</div>`;
-  h+=`<div class="sm muted" style="margin:2px 2px 10px">💡 Краски, оксиды, порошок, смывка, маски — через «Приход» на Складе. Здесь — расходники (перчатки, фольга, шапочки), косметика (шампуни, укладочные, термозащита), такси, аренда и прочее.</div>`;
+  h+=`<div class="sm muted" style="margin:2px 2px 10px">💡 Краски, оксиды, порошок, смывка, маски — через «Приход» на Складе. Здесь — расходники (перчатки, фольга, шапочки), косметика (шампуни, укладочные, термозащита), еда, такси, аренда и прочее.</div>`;
   // Оборудование
   h+=`<div class="card tap" onclick="equipSheet()" style="display:flex;align-items:center;gap:11px">
     <span class="gico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a3.7 3.7 0 0 0-5 5l-6 6 2 2 6-6a3.7 3.7 0 0 0 5-5l-2.2 2.2-2-2Z"/></svg></span>

@@ -737,14 +737,21 @@ function toggleStock(k){
   const b=document.getElementById('stockBody'); if(b) b.innerHTML=renderStockBody();
 }
 /* Список «Заказать» — позиции на исходе, копируется одной кнопкой. */
+/* Бренд к названию — но только если его там ещё нет (у оксидов он уже вшит). */
+function withBrand(название, бренд){
+  const br=(бренд||'').trim();
+  if(!br || br==='—') return название;
+  const key=br.toLowerCase().split(/\s+/)[0];
+  return название.toLowerCase().includes(key) ? название : название+' · '+br;
+}
 function orderList(){
   return sortMats(DB.materials.filter(m=>m.остаток_г<=m.мин_остаток_г))
-    .map(m=>({название:m.название, бренд:m.бренд, текст:`осталось ${fmtG(m.остаток_г)} г (мин ${m.мин_остаток_г})`}));
+    .map(m=>({название:m.название, бренд:m.бренд, текст:`${fmtG(m.остаток_г)} г`}));
 }
 function orderSheet(){
   const list=orderList();
   if(!list.length) return toast('Всё в норме — заказывать нечего ✅');
-  const rows=list.map(x=>`<div class="kv"><span class="k">${esc(x.название)}${x.бренд&&x.бренд!=='—'?' · '+esc(x.бренд):''}</span><span class="v" style="color:var(--red)">${esc(x.текст)}</span></div>`).join('');
+  const rows=list.map(x=>`<div class="kv"><span class="k">${esc(withBrand(x.название,x.бренд))}</span><span class="v mono" style="color:var(--red);white-space:nowrap">${esc(x.текст)}</span></div>`).join('');
   openSheet('Заказать', `
     <div class="sm muted" style="margin-bottom:10px">${list.length} ${plural(list.length,'позиция','позиции','позиций')} на исходе. Скопируй список и отправь поставщику.</div>
     <div class="card">${rows}</div>`,
@@ -753,7 +760,7 @@ function orderSheet(){
 }
 function copyOrder(){
   const list=orderList();
-  const t='Заказать:\n'+list.map(x=>'• '+x.название+(x.бренд&&x.бренд!=='—'?' ('+x.бренд+')':'')+' — '+x.текст).join('\n');
+  const t='Заказать:\n'+list.map(x=>'• '+withBrand(x.название,x.бренд)+' — '+x.текст).join('\n');
   if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(()=>toast('Список скопирован'),()=>fallbackCopy(t));
   else fallbackCopy(t);
 }
@@ -1259,12 +1266,8 @@ function drawNewWork(){
       h+=`<option value="" disabled>──────────</option>`;
     }
     // бренд в подписи — иначе «Оксид 6%» от разных марок не различить
-    h+=sortMats(DB.materials).map(m=>{
-      const br=(m.бренд||'').trim();
-      const label=(br && br!=='—' && !m.название.toLowerCase().includes(br.toLowerCase().split(/\s+/)[0]))
-        ? `${m.название} · ${br}` : m.название;
-      return `<option value="${m.id}" ${m.id===id?'selected':''}>${esc(label)}</option>`;
-    }).join('');
+    h+=sortMats(DB.materials).map(m=>
+      `<option value="${m.id}" ${m.id===id?'selected':''}>${esc(withBrand(m.название,m.бренд))}</option>`).join('');
     return h;
   };
   const linesHtml=_nw.lines.map((ln,i)=>{

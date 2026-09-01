@@ -523,7 +523,7 @@ function calcCost(w, materials){
 }
 
 /* ==================== ХРАНИЛИЩЕ ==================== */
-const APP_BUILD = '2026-09-01 · 12';   // поднимать при каждой выкладке
+const APP_BUILD = '2026-09-01 · 13';   // поднимать при каждой выкладке
 const KEY = 'colorist_v7';
 let DB;
 function load(){
@@ -864,6 +864,9 @@ function doRestockPiece(id){
 }
 function logPurchase(o){
   if(!DB.expenses) DB.expenses=[];
+  // Закупка датируется сегодняшним днём — возвращаем календарь Расхода на её месяц,
+  // иначе она уедет за пределы выбранного месяца и покажется потерянной.
+  _expPeriod=periodShowing(todayISO(), _expPeriod);
   DB.expenses.push({id:uid('e'), дата:todayISO(), категория:'материалы',
     сумма:o.сумма||0, заметка:(o.название||'Закупка')+(o.кол?' · '+o.кол:''), материал_id:o.материал_id||null});
 }
@@ -1101,13 +1104,37 @@ function saveService(id, newId){
 
 /* ==================== РАБОТЫ (журнал по дням) ==================== */
 let _wPeriod='month';
-const W_PERIODS=[['today','Сегодня'],['week','Неделя'],['month','Месяц'],['all','Всё']];
-function periodFrom(p){
-  const d=new Date(); d.setHours(0,0,0,0);
-  if(p==='today') return isoLocal(d);
-  if(p==='week'){ d.setDate(d.getDate()-6); return isoLocal(d); }
-  if(p==='month'){ d.setDate(d.getDate()-29); return isoLocal(d); }
-  return '0000-00-00';
+/* Только календарный месяц (листается стрелками) и всё время. Скользящие «сегодня/неделя» убраны. */
+const W_PERIODS=[['month','Месяц'],['all','За всё время']];
+/* «Месяц» — календарный (1-е…последнее число), а не скользящие 30 дней:
+   отчёт за август должен быть августом. _monthOff листает месяцы назад стрелками. */
+let _monthOff=0;
+const MONTHS=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+function periodRange(p){
+  const n=new Date(); n.setHours(0,0,0,0);
+  if(p==='month'){
+    const m=new Date(n.getFullYear(), n.getMonth()+_monthOff, 1);
+    return {from:isoLocal(m), to:isoLocal(new Date(m.getFullYear(), m.getMonth()+1, 0))};
+  }
+  return {from:'0000-00-00', to:'9999-12-31'};
+}
+function periodFrom(p){ return periodRange(p).from; }
+function inPeriod(дата, p){ const r=periodRange(p); return дата>=r.from && дата<=r.to; }
+function monthLabel(){
+  const n=new Date(); const m=new Date(n.getFullYear(), n.getMonth()+_monthOff, 1);
+  return MONTHS[m.getMonth()] + (m.getFullYear()!==n.getFullYear() ? ' '+m.getFullYear() : '');
+}
+/* Стрелки листания месяца. Вперёд дальше текущего не пускаем. */
+function shiftMonth(step, rerender){
+  if(_monthOff+step>0) return;
+  _monthOff+=step; document.getElementById('view').innerHTML=rerender();
+}
+function monthNav(rerenderName){
+  return `<div class="row between" style="margin:-4px 2px 10px; align-items:center">
+    <span class="iconbtn" onclick="shiftMonth(-1,${rerenderName})">‹</span>
+    <span class="sm" style="font-weight:700">${monthLabel()}</span>
+    <span class="iconbtn" style="${_monthOff>=0?'opacity:.3;pointer-events:none':''}" onclick="shiftMonth(1,${rerenderName})">›</span>
+  </div>`;
 }
 /* Маржу считаем только с 1 сентября. Августовские работы заносились задним числом без формул,
    поэтому себестоимость у них 0 и маржа выходила 100% — такие цифры портили всю аналитику.
@@ -1117,13 +1144,13 @@ function margCounted(w){ return (w.дата||'')>=MARG_FROM; }
 function setWPeriod(p){ _wPeriod=p; document.getElementById('view').innerHTML=renderWorks(); }
 function renderWorks(){
   const all=[...DB.works].sort((a,b)=>b.дата.localeCompare(a.дата));
-  const seg=`<div class="seg" style="margin-bottom:12px">${W_PERIODS.map(([k,l])=>
-    `<button class="${_wPeriod===k?'on':''}" onclick="setWPeriod('${k}')">${l}</button>`).join('')}</div>`;
+  const seg=`<div class="seg" style="margin-bottom:${_wPeriod==='month'?'8px':'12px'}">${W_PERIODS.map(([k,l])=>
+    `<button class="${_wPeriod===k?'on':''}" onclick="setWPeriod('${k}')">${l}</button>`).join('')}</div>`
+    + (_wPeriod==='month'?monthNav('renderWorks'):'');
 
   if(!all.length) return seg+emptyBox('📋','Пока нет работ','Кнопка «＋ Работа» внизу. Если услуг ещё нет — сначала заведите услугу');
 
-  const from=periodFrom(_wPeriod);
-  const works=all.filter(w=>w.дата>=from);
+  const works=all.filter(w=>inPeriod(w.дата,_wPeriod));
 
   // сводка за период. Маржа — только по работам с себестоимостью (с 1 сентября).
   const rev=works.reduce((s,w)=>s+w.цена,0);
@@ -1402,7 +1429,8 @@ function saveWork(){
     штучные.forEach(p=>{ const pp=pById(p.id); if(pp)pp.остаток_шт=Math.max(0,pp.остаток_шт-p.кол_во); });
   }
   const wasEdit=!!_nw._editId;
-  const былП=_wPeriod; _wPeriod=periodShowing(w.дата, _wPeriod);   // работа задним числом иначе пропала бы из фильтра
+  const былП=_wPeriod, былМ=_monthOff;   // работа задним числом иначе пропала бы из фильтра
+  _wPeriod=periodShowing(w.дата, _wPeriod);
   DB.works.push(w); save(); closeSheet(); go('works');
   const notes=[];
   if(bad) notes.push(`${bad} нераспозн. строк пропущено`);
@@ -1411,8 +1439,8 @@ function saveWork(){
   const base = wasEdit ? 'Работа изменена' : (noStock ? 'Работа добавлена (задним числом)' : 'Работа проведена');
   // «склад обновлён» — только если реально списывали
   const tail = notes.length ? ' · '+notes.join(' · ') : ((noStock || !шаги.length) ? '' : ', склад обновлён');
-  const PN={today:'Сегодня',week:'Неделя',month:'Месяц',all:'Всё'};
-  toast(base + tail + (_wPeriod===былП ? '' : ' · период «'+PN[_wPeriod]+'»'));
+  const сменился = _wPeriod!==былП || _monthOff!==былМ;
+  toast(base + tail + (сменился ? ' · показан '+(_wPeriod==='month'?monthLabel():'весь период') : ''));
 }
 
 /* ==================== РАСХОД ==================== */
@@ -1422,11 +1450,12 @@ const EXP_MANUAL_CATS=['расходники','косметика','мелочь
 const EXP_CAT_KEYS=Object.keys(EXP_CATS);
 let _expPeriod='month';
 function setExpPeriod(p){ _expPeriod=p; document.getElementById('view').innerHTML=renderExpenses(); }
-function expInPeriod(p){ const from=periodFrom(p); return (DB.expenses||[]).filter(e=>e.дата>=from); }
+function expInPeriod(p){ return (DB.expenses||[]).filter(e=>inPeriod(e.дата,p)); }
 function equipTotal(){ return (DB.equipment||[]).reduce((s,e)=>s+(e.цена||0)*(e.кол_во||1),0); }
 function renderExpenses(){
-  const seg=`<div class="seg" style="margin-bottom:12px">${W_PERIODS.map(([k,l])=>
-    `<button class="${_expPeriod===k?'on':''}" onclick="setExpPeriod('${k}')">${l}</button>`).join('')}</div>`;
+  const seg=`<div class="seg" style="margin-bottom:${_expPeriod==='month'?'8px':'12px'}">${W_PERIODS.map(([k,l])=>
+    `<button class="${_expPeriod===k?'on':''}" onclick="setExpPeriod('${k}')">${l}</button>`).join('')}</div>`
+    + (_expPeriod==='month'?monthNav('renderExpenses'):'');
   const list=expInPeriod(_expPeriod).sort((a,b)=>b.дата.localeCompare(a.дата));
   const total=list.reduce((s,e)=>s+(e.сумма||0),0);
   const byCat={}; list.forEach(e=>byCat[e.категория]=(byCat[e.категория]||0)+(e.сумма||0));
@@ -1482,10 +1511,11 @@ function saveExpense(id){
   const obj={ категория:g('ex_cat'), сумма, дата:g('ex_date')||todayISO(), заметка:g('ex_note').trim()||EXP_CATS[g('ex_cat')] };
   if(id){ const i=DB.expenses.findIndex(x=>x.id===id); if(i>=0) DB.expenses[i]={...DB.expenses[i], ...obj}; }
   else DB.expenses.push({id:uid('e'), ...obj});
-  const был=_expPeriod; _expPeriod=periodShowing(obj.дата, _expPeriod);
+  const былП=_expPeriod, былМ=_monthOff;
+  _expPeriod=periodShowing(obj.дата, _expPeriod);
   save(); closeSheet(); go('expenses');
-  const PN={today:'Сегодня',week:'Неделя',month:'Месяц',all:'Всё'};
-  toast(_expPeriod===был ? 'Сохранено' : 'Сохранено · период переключён на «'+PN[_expPeriod]+'»');
+  const сменился = _expPeriod!==былП || _monthOff!==былМ;
+  toast(сменился ? 'Сохранено · показан '+(_expPeriod==='month'?monthLabel():'весь период') : 'Сохранено');
 }
 function delExpense(id){ confirmDo('Удалить эту запись расхода?', ()=>{
   DB.expenses=DB.expenses.filter(x=>x.id!==id); save(); closeSheet(); go('expenses'); toast('Удалено'); }); }
@@ -1532,9 +1562,8 @@ const MONTHS_SHORT=['янв','фев','мар','апр','май','июн','ию�
 function setRepPeriod(p){ _repPeriod=p; document.getElementById('view').innerHTML=renderReport(); }
 function workHours(w){ const t = w.время || ((sById(w.услуга_id)||{}).время_мин) || 0; return t/60; }
 function renderReport(){
-  const from=periodFrom(_repPeriod);
-  const works=DB.works.filter(w=>w.дата>=from);
-  const exps=(DB.expenses||[]).filter(e=>e.дата>=from);
+  const works=DB.works.filter(w=>inPeriod(w.дата,_repPeriod));
+  const exps=(DB.expenses||[]).filter(e=>inPeriod(e.дата,_repPeriod));
 
   const rev=works.reduce((s,w)=>s+w.цена,0);
   const spend=exps.reduce((s,e)=>s+(e.сумма||0),0);
@@ -1543,8 +1572,9 @@ function renderReport(){
   const cost=margWorks.reduce((s,w)=>s+(w.себестоимость||0),0);
   const hours=works.reduce((s,w)=>s+workHours(w),0);
 
-  const seg=`<div class="seg" style="margin-bottom:12px">${W_PERIODS.map(([k,l])=>
-    `<button class="${_repPeriod===k?'on':''}" onclick="setRepPeriod('${k}')">${l}</button>`).join('')}</div>`;
+  const seg=`<div class="seg" style="margin-bottom:${_repPeriod==='month'?'8px':'12px'}">${W_PERIODS.map(([k,l])=>
+    `<button class="${_repPeriod===k?'on':''}" onclick="setRepPeriod('${k}')">${l}</button>`).join('')}</div>`
+    + (_repPeriod==='month'?monthNav('renderReport'):'');
 
   let h=seg;
   h+=`<div class="grid-stat">
@@ -1850,8 +1880,12 @@ function todayISO(){ return isoLocal(new Date()); }
 /* Запись со старой датой выпадала из текущего фильтра и выглядела как несохранённая.
    Подбираем ближайший период, в котором она видна. */
 function periodShowing(дата, текущий){
-  if(!дата || дата>=periodFrom(текущий)) return текущий;
-  return ['today','week','month','all'].find(p=>дата>=periodFrom(p)) || 'all';
+  if(!дата || inPeriod(дата,текущий)) return текущий;
+  // запись из другого месяца — перелистываем календарь на её месяц
+  const n=new Date(), d=new Date(дата+'T00:00');
+  const off=(d.getFullYear()-n.getFullYear())*12 + (d.getMonth()-n.getMonth());
+  if(off<=0){ _monthOff=off; return 'month'; }
+  return 'all';
 }
 /* «1 сентября» — для фраз внутри текста, без дня недели. */
 function fmtDay(iso){ const d=new Date(iso+'T00:00');

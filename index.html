@@ -416,7 +416,7 @@ function calcCost(w, materials){
 }
 
 /* ==================== ХРАНИЛИЩЕ ==================== */
-const APP_BUILD = '2026-09-01 · 14';   // поднимать при каждой выкладке
+const APP_BUILD = '2026-09-01 · 15';   // поднимать при каждой выкладке
 const KEY = 'colorist_v7';
 let DB;
 function load(){
@@ -773,7 +773,8 @@ function logPurchase(o){
   // календарь Расхода на её месяц, иначе трата окажется вне выбранного месяца.
   const дата=o.дата||todayISO();
   _expPeriod=periodShowing(дата, _expPeriod);
-  DB.expenses.push({id:uid('e'), дата, категория:'материалы',
+  // граммы храним, чтобы удаление закупки могло вернуть склад в прежнее состояние
+  DB.expenses.push({id:uid('e'), дата, категория:'материалы', граммы:o.граммы||0,
     сумма:o.сумма||0, заметка:(o.название||'Закупка')+(o.кол?' · '+o.кол:''), материал_id:o.материал_id||null});
 }
 
@@ -1389,7 +1390,7 @@ function renderExpenses(){
             <div class="sm muted">${EXP_CATS[e.категория]||e.категория}${isAuto?' · со склада':''}</div></div>
           <div class="row" style="gap:10px">
             <div class="title mono">${money(e.сумма)}</div>
-            ${isAuto?'':`<span class="iconbtn" onclick="event.stopPropagation();delExpense('${e.id}')">🗑</span>`}
+            <span class="iconbtn" onclick="event.stopPropagation();delExpense('${e.id}')">🗑</span>
           </div>
         </div>
       </div>`;
@@ -1423,8 +1424,22 @@ function saveExpense(id){
   const сменился = _expPeriod!==былП || _monthOff!==былМ;
   toast(сменился ? 'Сохранено · показан '+(_expPeriod==='month'?monthLabel():'весь период') : 'Сохранено');
 }
-function delExpense(id){ confirmDo('Удалить эту запись расхода?', ()=>{
-  DB.expenses=DB.expenses.filter(x=>x.id!==id); save(); closeSheet(); go('expenses'); toast('Удалено'); }); }
+/* Закупку со склада тоже можно удалить — ошиблись в приходе, надо откатить и деньги, и граммы. */
+function delExpense(id){
+  const e=(DB.expenses||[]).find(x=>x.id===id); if(!e) return;
+  const m=e.материал_id?mById(e.материал_id):null;
+  const вернём=(m && e.граммы>0) ? Math.min(e.граммы, m.остаток_г) : 0;
+  const msg = вернём
+    ? `Удалить закупку на ${money(e.сумма)}? Со склада уйдёт ${fmtG(вернём)} г — остаток «${m.название}» станет ${fmtG(m.остаток_г-вернём)} г.`
+    : (m ? `Удалить закупку на ${money(e.сумма)}? Остаток на складе не изменится — граммы этой записи не сохранены.`
+         : 'Удалить эту запись расхода?');
+  confirmDo(msg, ()=>{
+    if(вернём) m.остаток_г = Math.round((m.остаток_г-вернём)*10)/10;
+    DB.expenses=DB.expenses.filter(x=>x.id!==id);
+    save(); closeSheet(); go('expenses');
+    toast(вернём?'Удалено · склад −'+fmtG(вернём)+' г':'Удалено');
+  });
+}
 
 /* Оборудование / имущество */
 function equipSheet(){

@@ -334,116 +334,9 @@ function margLevel(marg, price){
 
 /* ==================== СИД ==================== */
 function seed(){
-  // Реальный склад из тетради. Краски суммированы по оттенку (остаток нетто, г).
-  // Цены — примерные (демо). нетто_г — вес продукта в полной упаковке; цена_за_грамм = цена/нетто.
-  let _id=0; const nid=p=>p+(_id++);
-  // [бренд, название, остаток_г, цена_упаковки]
-  const paintRows = [
-    // Helen Seward · серия Lumia
-    ['Helen Seward','Краска Lumia 10.12',186,620],['Helen Seward','Краска Lumia 9.23',62,620],
-    ['Helen Seward','Краска Lumia 9.24',38,620],['Helen Seward','Краска Lumia 9.27',69,620],
-    ['Helen Seward','Краска Lumia 8.2',77,620],['Helen Seward','Краска Lumia 7.1',83,620],
-    ['Helen Seward','Краска Lumia 7.34',142,620],['Helen Seward','Краска Lumia 7.2',37,620],
-    ['Helen Seward','Краска Lumia 7.0',13,620],['Helen Seward','Краска Lumia 6.4',37,620],
-    ['Helen Seward','Краска Lumia 6.32',41,620],['Helen Seward','Краска Lumia 6.21',92,620],
-    ['Helen Seward','Краска Lumia 6.2',154,620],['Helen Seward','Краска Lumia 6.1',139,620],
-    ['Helen Seward','Краска Lumia 6.0',114,620],['Helen Seward','Краска Lumia 5.32',99,620],
-    ['Helen Seward','Краска Lumia 5.5',95,620],['Helen Seward','Краска Lumia 5.21',65,620],
-    ['Helen Seward','Краска Lumia 5.0',38,620],['Helen Seward','Краска Lumia 4.0',131,620],
-    ['Helen Seward','Краска Lumia 0.55',70,620],['Helen Seward','Краска Lumia 0.88',5,620],
-    ['Helen Seward','Краска Lumia 0.33',120,620],['Helen Seward','Краска Lumia 0.77',78,620],
-    ['Helen Seward','Краска Lumia 0.44',67,620],
-    // Helen Seward · серия BB
-    ['Helen Seward','Краска BB 10.3',71,620],['Helen Seward','Краска BB 0.0',93,620],
-    ['Helen Seward','Краска BB 10.2',93,620],['Helen Seward','Краска BB 8.3',24,620],
-    ['Helen Seward','Краска BB 7.32',40,620],['Helen Seward','Краска BB 10.17',64,620],
-    ['Helen Seward','Краска BB 9.2',20,620],['Helen Seward','Краска BB 9.12',42,620],
-    // Прочие бренды
-    ['OLLIN','Краска OLLIN 0/0',245,520],['Estel','Краска Estel Sens 6.11',68,480],
-    ['Estel','Краска Estel Blondbar BBC18',192,480],['Estel','Краска Estel Sens 7.0',50,480],
-    ['Estel','Краска Estel Sens 6.17',56,480],['OLLIN','Краска OLLIN Silk 0.0',204,520],
-    ['Schwarzkopf','Краска Igora 12.0',55,720],['Estel','Краска Estel Princess 0.66',66,480],
-    ['Constant Delight','Краска CD 0.55',105,390],['JOC','Краска JOC super lightening 12.11',108,990],
-    ['Be Hair','Краска Be Hair 3С 6.2',104,560],['Bouticle','Краска Bouticle expert 0.0',101,520],
-    ['Alfaparf','Краска Alfaparf Yellow 7.21',84,680],
-  ];
-  const paints = paintRows.map(r=>({id:nid('k'), бренд:r[0], название:r[1], тип:'краска',
-    объём_мл:100, тара_г:15, нетто_г:93, цена_упаковки:r[3], остаток_г:r[2], мин_остаток_г:30}));
-
-  // [бренд, название, остаток_г, цена, объём_мл, тара_г, нетто_г]
-  const oxRows = [
-    ['Helen Seward','Оксид 1.5% · Helen Seward',5000,2800,5000,150,5350],
-    ['Helen Seward','Оксид 3% · Helen Seward',5000,2800,5000,150,5350],
-    ['Helen Seward','Оксид 6% · Helen Seward',345,2800,5000,150,5350],
-    ['OLLIN','Оксид 1% крем-эмульсия · OLLIN',615,600,500,50,520],
-    ['Londa','Оксид 6% 20vol · Londa',378,950,1000,60,1000],
-    ['Londa','Оксид 12% 40vol · Londa',1117,950,1000,60,1000],
-    ['Londa','Оксид 1.9% 6vol · Londa',483,950,1000,60,1000],
-  ];
-  const oxids = oxRows.map(r=>({id:nid('o'), бренд:r[0], название:r[1], тип:'оксид',
-    объём_мл:r[4], тара_г:r[5], нетто_г:r[6], цена_упаковки:r[3], остаток_г:r[2], мин_остаток_г:500}));
-
-  const powders = [['—','Пудра осветляющая',310,1900]].map(r=>({id:nid('pw'), бренд:r[0], название:r[1],
-    тип:'пудра', объём_мл:0, тара_г:0, нетто_г:500, цена_упаковки:r[3], остаток_г:r[2], мин_остаток_г:100}));
-
-  // [бренд, название, остаток_г, цена, объём_мл, тара_г, нетто_г]
-  const careRows = [
-    ['Limba','Бонд-защита',420,3200,500,20,500],
-    ['Limba','Scalp Clean (шампунь-мята)',1542,1200,1000,60,1000],
-    ['Limba','Purifying (шампунь)',1940,1200,1000,60,1000],
-    ['Limba','For Natural Hair',180,1500,1000,60,1000],
-    ['Limba','Lipid Treatment',989,1800,750,50,750],
-    ['Estel','Princess Essex',253,900,1000,60,1000],
-    ['SIM','Розовый бальзам',279,1100,1000,60,1000],
-    ['TaShe','Шампунь стандартный',928,800,1000,60,1000],
-    ['TaShe','Кондиционер питательный',854,900,750,50,750],
-    ['Limba','Protein Treatment',322,1900,750,50,750],
-    ['Limba','Reconstruction',555,2100,300,30,300],
-    ['Limba','Immediate Protection',465,1700,300,30,300],
-    ['Limba','Total Revitalizer',346,1600,250,25,250],
-    ['Limba','Activator',163,1400,250,25,250],
-    ['Limba','SOS Treatment',214,1800,250,25,250],
-  ];
-  const care = careRows.map(r=>({id:nid('u'), бренд:r[0], название:r[1], тип:'уход',
-    объём_мл:r[4], тара_г:r[5], нетто_г:r[6], цена_упаковки:r[3], остаток_г:r[2], мин_остаток_г:100}));
-
-  const materials = [...paints, ...oxids, ...powders, ...care];
-  const pieces = []; // штучные учитываются как «Расходники» в Расходе, не на складе
-
-  // Услуги — прайс-лист: название, вилка цены, время. Рецепт у каждого клиента свой.
-  const services = [
-    {id:'s1', название:'Окрашивание в один тон', иконка:'капля', цена_от:2500, цена_до:3500, время_мин:90,
-     _демоформула:'6.0 (40гр) + хс 6% (60гр)'},
-    {id:'s2', название:'Осветление + тонирование', иконка:'искра', цена_от:4200, цена_до:6000, время_мин:120,
-     _демоформула:'Пудра (30гр) + хс 6% (60гр)\n8.3 (20гр) + 1,5% (40гр)'},
-    {id:'s3', название:'Уход/ботокс', иконка:'лист', цена_от:1500, цена_до:0, время_мин:40,
-     _демоформула:'Бонд-защита (25гр)'},
-  ];
-
-  const works = [
-    mkWork(services[0], materials, -6, 8),
-    mkWork(services[1], materials, -2, 12),
-    mkWork(services[0], materials, -1, 5),
-  ];
-  services.forEach(s=>delete s._демоформула);   // в услугах рецепт не хранится
-  return {materials, pieces, services, works, purchases:[], _v:4};
-
-  function mkWork(svc, mats, dayOffset, waste){
-    const lines = parseFormulaText(svc._демоформула, mats);
-    const steps = lines.filter(l=>l.материал_id).map(l=>({
-      название:(mats.find(m=>m.id===l.материал_id)||{}).название||'',
-      материал_id:l.материал_id, факт_граммы:l.граммы, оксид_id:null, факт_оксида:0
-    }));
-    const d = new Date(); d.setDate(d.getDate()+dayOffset);
-    const w = {
-      id:uid('w'), дата:isoLocal(d), услуга_id:svc.id, услуга_назв:svc.название,
-      шаги:steps, остаток_смеси_г:waste||0, штучные:[], время:svc.время_мин||0,
-      цена: svc.цена_от, формула: svc._демоформула,
-    };
-    w.себестоимость = calcCost(w, mats);
-    w.маржа = w.цена - w.себестоимость;
-    return w;
-  }
+  // Пустой старт: демо-данных нет. Реальные остатки приходят через
+  // «Восстановить из копии» или синхронизацию с сервером.
+  return {materials:[], pieces:[], services:[], works:[], purchases:[], expenses:[], equipment:[], _v:4};
 }
 
 /* Чистый разбор формулы (без DOM) — используется и в сиде, и в приложении.
@@ -523,7 +416,7 @@ function calcCost(w, materials){
 }
 
 /* ==================== ХРАНИЛИЩЕ ==================== */
-const APP_BUILD = '2026-09-01 · 13';   // поднимать при каждой выкладке
+const APP_BUILD = '2026-09-01 · 14';   // поднимать при каждой выкладке
 const KEY = 'colorist_v7';
 let DB;
 function load(){
@@ -693,6 +586,7 @@ function renderStockBody(){
     h += accHeader(g.k, g.ic, g.title, items.length, lowN, open);
     if(open) h += `<div class="mgrid">` + items.map(matCardHtml).join('') + `</div>`;
   });
+  if(!DB.materials.length) h += emptyBox('📦','Склад пуст','Кнопка «＋ Добавить материал» внизу. Или загрузите копию: ⚙️ Настройки → «Восстановить из копии»');
   return h;
 }
 const LINE_ICONS = {
@@ -813,6 +707,15 @@ function restockMat(id){
         <input id="rs" type="number" inputmode="numeric" value="${m.цена_упаковки}"></label>
     </div>
     <div class="sm muted" style="margin:-4px 0 10px">Если цена изменилась — просто исправьте сумму, новая цена запомнится.</div>
+    <div class="fld-row" style="align-items:flex-end">
+      <label class="fld" style="flex:1"><span>Дата покупки</span>
+        <input id="rd" type="date" value="${todayISO()}"></label>
+      <label class="chk" style="flex:1;margin-bottom:12px">
+        <input id="rx" type="checkbox" checked>
+        <span>В расход<br><span class="xs muted">записать трату</span></span>
+      </label>
+    </div>
+    <div class="sm muted" style="margin:-4px 0 10px">Купила в августе — поставь ту дату, трата ляжет в август. Сними галочку, если эта покупка уже посчитана.</div>
     <div class="divider"></div>
     <label class="fld"><span>…или добавить граммами без покупки (початая тара, корректировка)</span>
       <input id="rg" type="number" inputmode="numeric" placeholder="0"></label>
@@ -829,14 +732,16 @@ function doRestockMat(id){
   }
   if(packs<=0) return toast('Укажите количество упаковок');
   const сумма=+document.getElementById('rs').value||0;
+  const дата=document.getElementById('rd').value||todayISO();
+  const вРасход=document.getElementById('rx').checked;
   const add = packs*m.нетто_г;
   m.остаток_г += add;
   // цена изменилась → запоминаем новую цену упаковки (себестоимость дальше по ней)
   const newPack = сумма/packs;
   if(сумма>0 && Math.abs(newPack-m.цена_упаковки)>=1) m.цена_упаковки = Math.round(newPack);
-  logPurchase({материал_id:m.id, название:m.название, кол:packs+' уп.', граммы:add, сумма});
+  if(вРасход) logPurchase({материал_id:m.id, название:m.название, кол:packs+' уп.', граммы:add, сумма, дата});
   save(); closeSheet(); go('stock');
-  toast('Приход +'+fmtG(add)+' г · закупка '+money(сумма));
+  toast('Приход +'+fmtG(add)+' г'+(вРасход?' · в расход '+money(сумма)+' ('+fmtDay(дата)+')':' · без расхода'));
 }
 function restockPiece(id){
   const p=pById(id);
@@ -864,10 +769,11 @@ function doRestockPiece(id){
 }
 function logPurchase(o){
   if(!DB.expenses) DB.expenses=[];
-  // Закупка датируется сегодняшним днём — возвращаем календарь Расхода на её месяц,
-  // иначе она уедет за пределы выбранного месяца и покажется потерянной.
-  _expPeriod=periodShowing(todayISO(), _expPeriod);
-  DB.expenses.push({id:uid('e'), дата:todayISO(), категория:'материалы',
+  // Дата закупки может быть задней (купила в августе, вносит в сентябре) — перелистываем
+  // календарь Расхода на её месяц, иначе трата окажется вне выбранного месяца.
+  const дата=o.дата||todayISO();
+  _expPeriod=periodShowing(дата, _expPeriod);
+  DB.expenses.push({id:uid('e'), дата, категория:'материалы',
     сумма:o.сумма||0, заметка:(o.название||'Закупка')+(o.кол?' · '+o.кол:''), материал_id:o.материал_id||null});
 }
 

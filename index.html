@@ -436,7 +436,7 @@ function seed(){
     }));
     const d = new Date(); d.setDate(d.getDate()+dayOffset);
     const w = {
-      id:uid('w'), дата:d.toISOString().slice(0,10), услуга_id:svc.id, услуга_назв:svc.название,
+      id:uid('w'), дата:isoLocal(d), услуга_id:svc.id, услуга_назв:svc.название,
       шаги:steps, остаток_смеси_г:waste||0, штучные:[], время:svc.время_мин||0,
       цена: svc.цена_от, формула: svc._демоформула,
     };
@@ -863,7 +863,7 @@ function doRestockPiece(id){
 }
 function logPurchase(o){
   if(!DB.expenses) DB.expenses=[];
-  DB.expenses.push({id:uid('e'), дата:new Date().toISOString().slice(0,10), категория:'материалы',
+  DB.expenses.push({id:uid('e'), дата:todayISO(), категория:'материалы',
     сумма:o.сумма||0, заметка:(o.название||'Закупка')+(o.кол?' · '+o.кол:''), материал_id:o.материал_id||null});
 }
 
@@ -1100,9 +1100,9 @@ let _wPeriod='month';
 const W_PERIODS=[['today','Сегодня'],['week','Неделя'],['month','Месяц'],['all','Всё']];
 function periodFrom(p){
   const d=new Date(); d.setHours(0,0,0,0);
-  if(p==='today') return d.toISOString().slice(0,10);
-  if(p==='week'){ d.setDate(d.getDate()-6); return d.toISOString().slice(0,10); }
-  if(p==='month'){ d.setDate(d.getDate()-29); return d.toISOString().slice(0,10); }
+  if(p==='today') return isoLocal(d);
+  if(p==='week'){ d.setDate(d.getDate()-6); return isoLocal(d); }
+  if(p==='month'){ d.setDate(d.getDate()-29); return isoLocal(d); }
   return '0000-00-00';
 }
 /* Маржу считаем только с 1 сентября. Августовские работы заносились задним числом без формул,
@@ -1131,12 +1131,7 @@ function renderWorks(){
   h+=`<div class="grid-stat" style="margin-bottom:4px">
     <div class="stat"><div class="lab">Выручка</div><div class="num mono">${money(rev)}</div></div>
     <div class="stat"><div class="lab">Маржа</div><div class="num mono" style="color:${mw.length?'var(--green)':'var(--muted)'}">${mw.length?money(marg):'—'}</div></div>
-  </div>
-  <div class="card" style="margin-bottom:6px"><div class="row between">
-    <span class="muted sm">${works.length} ${plural(works.length,'работа','работы','работ')}${works.length?' · ср. чек '+money(rev/works.length):''}</span>
-    <span class="sm muted">${mw.length?'себест. '+money(cost):'без себестоимости'}</span>
-  </div></div>
-  ${mw.length<works.length?`<div class="sm muted" style="margin:-2px 2px 10px">Маржа считается с ${fmtDay(MARG_FROM)} — по ${works.length-mw.length} ${plural(works.length-mw.length,'работе','работам','работам')} до этой даты материалы не заносились.</div>`:''}`;
+  </div>`;
 
   if(!works.length) return h+`<div class="empty"><div class="em">🗓️</div><div class="sm">За этот период работ нет</div></div>`;
 
@@ -1250,7 +1245,7 @@ function matName(id){ const m=mById(id); return m?m.название:'—'; }
 function newWork(svcId){
   if(!DB.services.length) return toast('Сначала добавьте услугу');
   _nw={услуга_id:svcId||DB.services[0].id, lines:[], штучные:[], остаток:0, формула:'',
-       _date:new Date().toISOString().slice(0,10), _noStock:false};
+       _date:todayISO(), _noStock:false};
   loadNwLines();
   drawNewWork();
 }
@@ -1391,7 +1386,7 @@ function saveWork(){
       DB.works=DB.works.filter(x=>x.id!==_nw._editId);
     }
   }
-  const today=new Date().toISOString().slice(0,10);
+  const today=todayISO();
   const w={ id:_nw._editId||uid('w'), дата:_nw._date||today, услуга_id:s.id, услуга_назв:s.название,
     шаги, остаток_смеси_г:_nw.остаток||0, время:_nw.время||0,
     штучные, цена:_nw.цена||0, формула:_nw.формула||'', без_склада:noStock };
@@ -1462,14 +1457,14 @@ function renderExpenses(){
   return h;
 }
 function editExpense(id){
-  const e = id ? (DB.expenses.find(x=>x.id===id)||{}) : {категория:'мелочь', сумма:'', дата:new Date().toISOString().slice(0,10), заметка:''};
+  const e = id ? (DB.expenses.find(x=>x.id===id)||{}) : {категория:'мелочь', сумма:'', дата:todayISO(), заметка:''};
   openSheet(id?'Изменить расход':'Новый расход', `
     <div class="sm muted" style="margin-bottom:12px">«Расходники» — перчатки, фольга, шапочки, полотенца/пеньюары одноразовые. «Косметика/уход» — шампуни, кондиционеры, укладочные, термозащита. Краски, оксиды, порошок, смывка, маски — через «Приход» на Складе.</div>
     <label class="fld"><span>Категория</span>
       <select id="ex_cat">${EXP_MANUAL_CATS.map(k=>`<option value="${k}" ${e.категория===k?'selected':''}>${EXP_CATS[k]}</option>`).join('')}</select></label>
     <div class="fld-row">
       <label class="fld"><span>Сумма, ₽</span><input id="ex_sum" type="number" inputmode="numeric" value="${e.сумма||''}" placeholder="500"></label>
-      <label class="fld"><span>Дата</span><input id="ex_date" type="date" value="${e.дата||new Date().toISOString().slice(0,10)}"></label>
+      <label class="fld"><span>Дата</span><input id="ex_date" type="date" value="${e.дата||todayISO()}"></label>
     </div>
     <label class="fld"><span>Заметка</span><input id="ex_note" value="${esc(e.заметка||'')}" placeholder="Чай, такси, вата…"></label>`,
     [ id?`<button class="btn danger wauto" onclick="delExpense('${id}')">🗑</button>`:`<button class="btn ghost" onclick="closeSheet()">Отмена</button>`,
@@ -1478,7 +1473,7 @@ function editExpense(id){
 function saveExpense(id){
   const g=x=>document.getElementById(x).value;
   const сумма=+g('ex_sum')||0; if(сумма<=0) return toast('Введите сумму');
-  const obj={ категория:g('ex_cat'), сумма, дата:g('ex_date')||new Date().toISOString().slice(0,10), заметка:g('ex_note').trim()||EXP_CATS[g('ex_cat')] };
+  const obj={ категория:g('ex_cat'), сумма, дата:g('ex_date')||todayISO(), заметка:g('ex_note').trim()||EXP_CATS[g('ex_cat')] };
   if(id){ const i=DB.expenses.findIndex(x=>x.id===id); if(i>=0) DB.expenses[i]={...DB.expenses[i], ...obj}; }
   else DB.expenses.push({id:uid('e'), ...obj});
   save(); closeSheet(); go('expenses'); toast('Сохранено');
@@ -1500,13 +1495,13 @@ function equipSheet(){
     [`<button class="btn ghost" onclick="closeSheet()">Закрыть</button>`]);
 }
 function editEquip(id){
-  const e = id ? (DB.equipment.find(x=>x.id===id)||{}) : {название:'', кол_во:1, цена:'', дата:new Date().toISOString().slice(0,10)};
+  const e = id ? (DB.equipment.find(x=>x.id===id)||{}) : {название:'', кол_во:1, цена:'', дата:todayISO()};
   openSheet(id?'Изменить':'Новое оборудование', `
     <label class="fld"><span>Название</span><input id="eq_name" value="${esc(e.название||'')}" placeholder="Фен Dyson"></label>
     <div class="fld-row">
       <label class="fld"><span>Кол-во</span><input id="eq_qty" type="number" inputmode="numeric" value="${e.кол_во||1}"></label>
       <label class="fld"><span>Цена за шт, ₽</span><input id="eq_price" type="number" inputmode="numeric" value="${e.цена||''}" placeholder="30000"></label>
-      <label class="fld"><span>Дата</span><input id="eq_date" type="date" value="${e.дата||new Date().toISOString().slice(0,10)}"></label>
+      <label class="fld"><span>Дата</span><input id="eq_date" type="date" value="${e.дата||todayISO()}"></label>
     </div>`,
     [ id?`<button class="btn danger wauto" onclick="delEquip('${id}')">🗑</button>`:`<button class="btn ghost" onclick="equipSheet()">Назад</button>`,
       `<button class="btn" onclick="saveEquip('${id||''}')">Сохранить</button>`]);
@@ -1787,10 +1782,10 @@ function backupStale(){
   return (Date.now()-+t)/86400000 > 7;
 }
 function backupBlob(){
-  const data={...DB, _экспорт:new Date().toISOString().slice(0,10), _приложение:'colorist-app'};
+  const data={...DB, _экспорт:todayISO(), _приложение:'colorist-app'};
   return new Blob([JSON.stringify(data,null,1)], {type:'application/json'});
 }
-function backupName(){ return 'учёт-колорист-'+new Date().toISOString().slice(0,10)+'.json'; }
+function backupName(){ return 'учёт-колорист-'+todayISO()+'.json'; }
 function markBackedUp(){ localStorage.setItem(BK_KEY, String(Date.now())); }
 function downloadBackup(){
   const a=document.createElement('a');
@@ -1832,6 +1827,12 @@ function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;',
 function fmtG(g){ return (Math.round(g*10)/10).toLocaleString('ru-RU'); }
 function plural(n,a,b,c){ n=Math.abs(n)%100; const n1=n%10;
   if(n>10&&n<20)return c; if(n1>1&&n1<5)return b; if(n1===1)return a; return c; }
+/* Дата в ЛОКАЛЬНОМ поясе. toISOString() отдаёт UTC: восточнее Гринвича полночь уезжала
+   на вчера (фильтр «Сегодня» цеплял вчерашние работы), западнее — вечер уезжал на завтра. */
+function isoLocal(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function todayISO(){ return isoLocal(new Date()); }
 /* «1 сентября» — для фраз внутри текста, без дня недели. */
 function fmtDay(iso){ const d=new Date(iso+'T00:00');
   const M=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];

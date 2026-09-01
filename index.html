@@ -990,9 +990,12 @@ function svcStats(s){
   const ws=DB.works.filter(w=>w.услуга_id===s.id);
   if(!ws.length) return null;
   const rev=ws.reduce((x,w)=>x+(w.цена||0),0);
-  const cost=ws.reduce((x,w)=>x+(w.себестоимость||0),0);
+  // маржа — только по работам с реальной себестоимостью (см. MARG_FROM)
+  const mw=ws.filter(margCounted);
+  const mRev=mw.reduce((x,w)=>x+(w.цена||0),0);
+  const cost=mw.reduce((x,w)=>x+(w.себестоимость||0),0);
   return {n:ws.length, rev, cost, avg:Math.round(rev/ws.length),
-          marg:rev-cost, margPct:rev?Math.round((rev-cost)/rev*100):0,
+          mn:mw.length, mRev, marg:mRev-cost, margPct:mRev?Math.round((mRev-cost)/mRev*100):0,
           min:Math.min(...ws.map(w=>w.цена||0)), max:Math.max(...ws.map(w=>w.цена||0))};
 }
 function renderServices(){
@@ -1013,7 +1016,7 @@ function renderServices(){
         </div>
         <div style="text-align:right; flex:none; padding-left:8px">
           <div class="title mono" style="white-space:nowrap">${svcPriceText(s)}</div>
-          ${st?`<div class="xs" style="color:${margLevel(st.marg,st.rev).c}">маржа ${st.margPct}%</div>`
+          ${st&&st.mn?`<div class="xs" style="color:${margLevel(st.marg,st.mRev).c}">маржа ${st.margPct}%</div>`
               :(s.время_мин?'':`<div class="xs muted">${s.время_мин||0} мин</div>`)}
         </div>
       </div>
@@ -1039,9 +1042,11 @@ function svcSheet(id){
     <div class="card">
       <div class="kv"><span class="k">Проведено работ</span><span class="v">${st.n}</span></div>
       <div class="kv"><span class="k">Средний чек</span><span class="v">${money(st.avg)}${st.max>st.min?` <span class="xs muted">(${money(st.min)}–${money(st.max)})</span>`:''}</span></div>
-      <div class="kv"><span class="k">Материалы съели</span><span class="v">${money(st.cost)}</span></div>
-      <div class="kv"><span class="k">Заработано чистыми</span><span class="v" style="color:${margLevel(st.marg,st.rev).c}">${money(st.marg)} · ${st.margPct}%</span></div>
       <div class="kv"><span class="k">Всего выручки</span><span class="v">${money(st.rev)}</span></div>
+      ${st.mn?`<div class="kv"><span class="k">Материалы съели</span><span class="v">${money(st.cost)}</span></div>
+      <div class="kv"><span class="k">Заработано чистыми</span><span class="v" style="color:${margLevel(st.marg,st.mRev).c}">${money(st.marg)} · ${st.margPct}%</span></div>
+      ${st.mn<st.n?`<div class="sm muted" style="padding-top:8px">Маржа — по ${st.mn} ${plural(st.mn,'работе','работам','работам')} с ${fmtDay(MARG_FROM)}; по остальным материалы не заносились.</div>`:''}`
+      :`<div class="sm muted" style="padding-top:8px">Маржа появится с ${fmtDay(MARG_FROM)} — по прошлым работам материалы не заносились.</div>`}
     </div>`
     :`<div class="sm muted" style="margin:2px 2px 12px">Работ по этой услуге ещё не было — как проведёшь первую, тут появится реальный средний чек и маржа.</div>`}
     <button class="btn" onclick="closeSheet();newWork('${id}')">▶️ Провести работу</button>`,
@@ -1100,6 +1105,11 @@ function periodFrom(p){
   if(p==='month'){ d.setDate(d.getDate()-29); return d.toISOString().slice(0,10); }
   return '0000-00-00';
 }
+/* Маржу считаем только с 1 сентября. Августовские работы заносились задним числом без формул,
+   поэтому себестоимость у них 0 и маржа выходила 100% — такие цифры портили всю аналитику.
+   Выручка и количество работ за август считаются как обычно, исключена только маржа. */
+const MARG_FROM='2026-09-01';
+function margCounted(w){ return (w.дата||'')>=MARG_FROM; }
 function setWPeriod(p){ _wPeriod=p; document.getElementById('view').innerHTML=renderWorks(); }
 function renderWorks(){
   const all=[...DB.works].sort((a,b)=>b.дата.localeCompare(a.дата));
@@ -1111,19 +1121,22 @@ function renderWorks(){
   const from=periodFrom(_wPeriod);
   const works=all.filter(w=>w.дата>=from);
 
-  // сводка за период
+  // сводка за период. Маржа — только по работам с себестоимостью (с 1 сентября).
   const rev=works.reduce((s,w)=>s+w.цена,0);
-  const cost=works.reduce((s,w)=>s+w.себестоимость,0);
-  const marg=rev-cost;
+  const mw=works.filter(margCounted);
+  const mRev=mw.reduce((s,w)=>s+w.цена,0);
+  const cost=mw.reduce((s,w)=>s+(w.себестоимость||0),0);
+  const marg=mRev-cost;
   let h=seg;
   h+=`<div class="grid-stat" style="margin-bottom:4px">
     <div class="stat"><div class="lab">Выручка</div><div class="num mono">${money(rev)}</div></div>
-    <div class="stat"><div class="lab">Маржа</div><div class="num mono" style="color:var(--green)">${money(marg)}</div></div>
+    <div class="stat"><div class="lab">Маржа</div><div class="num mono" style="color:${mw.length?'var(--green)':'var(--muted)'}">${mw.length?money(marg):'—'}</div></div>
   </div>
   <div class="card" style="margin-bottom:6px"><div class="row between">
     <span class="muted sm">${works.length} ${plural(works.length,'работа','работы','работ')}${works.length?' · ср. чек '+money(rev/works.length):''}</span>
-    <span class="sm muted">себест. ${money(cost)}</span>
-  </div></div>`;
+    <span class="sm muted">${mw.length?'себест. '+money(cost):'без себестоимости'}</span>
+  </div></div>
+  ${mw.length<works.length?`<div class="sm muted" style="margin:-2px 2px 10px">Маржа считается с ${fmtDay(MARG_FROM)} — по ${works.length-mw.length} ${plural(works.length-mw.length,'работе','работам','работам')} до этой даты материалы не заносились.</div>`:''}`;
 
   if(!works.length) return h+`<div class="empty"><div class="em">🗓️</div><div class="sm">За этот период работ нет</div></div>`;
 
@@ -1146,7 +1159,7 @@ function renderWorks(){
           <div class="row" style="gap:10px">
             <div style="text-align:right">
               <div class="title mono">${money(w.цена)}</div>
-              <div class="xs" style="color:${margLevel(w.маржа,w.цена).c}">${w.маржа<0?'':'+'}${money(w.маржа)}${w.маржа<0?' 🔴':''}</div>
+              ${margCounted(w)?`<div class="xs" style="color:${margLevel(w.маржа,w.цена).c}">${w.маржа<0?'':'+'}${money(w.маржа)}${w.маржа<0?' 🔴':''}</div>`:''}
             </div>
             <span class="iconbtn" onclick="event.stopPropagation();delWork('${w.id}')">🗑</span>
           </div>
@@ -1174,9 +1187,10 @@ function workSheet(id){
     ${pieces?`<div class="card">${pieces}</div>`:''}
     <div class="card">
       <div class="kv"><span class="k">Остаток смеси (в отход)</span><span class="v">${w.остаток_смеси_г} г</span></div>
-      <div class="kv"><span class="k">Себестоимость</span><span class="v">${money(w.себестоимость)}</span></div>
       <div class="kv"><span class="k">Цена</span><span class="v">${money(w.цена)}</span></div>
-      <div class="kv"><span class="k">Маржа</span><span class="v" style="color:var(--green)">${money(w.маржа)} · ${w.цена?Math.round(w.маржа/w.цена*100):0}%</span></div>
+      ${margCounted(w)?`<div class="kv"><span class="k">Себестоимость</span><span class="v">${money(w.себестоимость)}</span></div>
+      <div class="kv"><span class="k">Маржа</span><span class="v" style="color:${margLevel(w.маржа,w.цена).c}">${money(w.маржа)} · ${w.цена?Math.round(w.маржа/w.цена*100):0}%</span></div>`
+      :`<div class="sm muted" style="padding-top:8px">Маржа не считается — работа до ${fmtDay(MARG_FROM)}, материалы по ней не заносились.</div>`}
     </div>
     <button class="btn soft" onclick="copyRecipe('${id}')">📋 Скопировать рецепт для DIKIDI</button>`,
     [`<button class="btn danger wauto" onclick="delWork('${id}')">🗑</button>`,
@@ -1322,7 +1336,7 @@ function drawNewWork(){
     </div>
 
     <div class="section-title"><span>Сверка расхода</span><span class="link" onclick="_nw.lines.push({материал_id:null,граммы:0});drawNewWork()">＋ строка</span></div>
-    ${linesHtml||'<div class="sm muted" style="margin-bottom:10px">Вставьте формулу или добавьте строки вручную</div>'}
+    ${linesHtml||'<div class="sm muted" style="margin-bottom:10px">Пусто — можно так и оставить. Для консультации, укладки и подобного материалы не тратятся.</div>'}
     <label class="fld"><span>Остаток смеси (в отход), г</span>
       <input type="number" inputmode="numeric" value="${_nw.остаток}" onchange="_nw.остаток=+this.value"></label>
 
@@ -1363,8 +1377,8 @@ function saveWork(){
   const noStock=!!_nw._noStock;
   const bad=_nw.lines.filter(l=>!l.материал_id).length;
   const шаги=_nw.lines.filter(l=>l.материал_id).map(l=>({название:matName(l.материал_id), материал_id:l.материал_id, факт_граммы:l.граммы, оксид_id:null, факт_оксида:0}));
-  // При обычном проведении нужна хотя бы одна строка; задним числом — можно без формулы (себестоимость 0).
-  if(!noStock && !шаги.length) return toast('Добавьте хотя бы одну строку расхода');
+  // Формула необязательна: у консультации, укладки и подобных материалов нет вовсе.
+  // Пустая работа = чистый доход без себестоимости, это законный случай.
   const штучные=_nw.штучные.map(p=>{const pp=pById(p.id);return {id:p.id, название:pp?pp.название:'?', кол_во:p.кол_во, цена_за_штуку:pp?pp.цена_за_штуку:0};});
   // Режим редактирования: возвращаем на склад старую работу (только если она списывалась), потом списываем новую
   if(_nw._editId){
@@ -1395,14 +1409,15 @@ function saveWork(){
   if(zeroed) notes.push(`${zeroed} позиц. в 0`);
   if(w.маржа<0) notes.push('⚠ в минус');
   const base = wasEdit ? 'Работа изменена' : (noStock ? 'Работа добавлена (задним числом)' : 'Работа проведена');
-  const tail = notes.length ? ' · '+notes.join(' · ') : (noStock ? '' : ', склад обновлён');
+  // «склад обновлён» — только если реально списывали
+  const tail = notes.length ? ' · '+notes.join(' · ') : ((noStock || !шаги.length) ? '' : ', склад обновлён');
   toast(base + tail);
 }
 
 /* ==================== РАСХОД ==================== */
 // «материалы» приходят ТОЛЬКО со склада (Приход) — в ручной ввод не даём, чтобы не путаться.
-const EXP_CATS={материалы:'Материалы', расходники:'Расходники', косметика:'Косметика/уход', мелочь:'Мелочь/сервис', еда:'Еда', такси:'Такси', аренда:'Аренда', реклама:'Реклама', обучение:'Обучение', прочее:'Прочее'};
-const EXP_MANUAL_CATS=['расходники','косметика','мелочь','еда','такси','аренда','реклама','обучение','прочее'];
+const EXP_CATS={материалы:'Материалы', расходники:'Расходники', косметика:'Косметика/уход', мелочь:'Мелочь/сервис', еда:'Еда', такси:'Такси', аренда:'Аренда', кредит:'Кредит', налог:'Налог', реклама:'Реклама', обучение:'Обучение', прочее:'Прочее'};
+const EXP_MANUAL_CATS=['расходники','косметика','мелочь','еда','такси','аренда','кредит','налог','реклама','обучение','прочее'];
 const EXP_CAT_KEYS=Object.keys(EXP_CATS);
 let _expPeriod='month';
 function setExpPeriod(p){ _expPeriod=p; document.getElementById('view').innerHTML=renderExpenses(); }
@@ -1520,7 +1535,8 @@ function renderReport(){
   const rev=works.reduce((s,w)=>s+w.цена,0);
   const spend=exps.reduce((s,e)=>s+(e.сумма||0),0);
   const profit=rev-spend;
-  const cost=works.reduce((s,w)=>s+w.себестоимость,0);
+  const margWorks=works.filter(margCounted);          // маржа только с MARG_FROM
+  const cost=margWorks.reduce((s,w)=>s+(w.себестоимость||0),0);
   const hours=works.reduce((s,w)=>s+workHours(w),0);
 
   const seg=`<div class="seg" style="margin-bottom:12px">${W_PERIODS.map(([k,l])=>
@@ -1567,8 +1583,9 @@ function renderReport(){
 
   // По услугам
   const bySvc={};
-  works.forEach(w=>{ const o=bySvc[w.услуга_назв]=bySvc[w.услуга_назв]||{n:0,rev:0,marg:0};
-    o.n++; o.rev+=w.цена; o.marg+=w.маржа; });
+  works.forEach(w=>{ const o=bySvc[w.услуга_назв]=bySvc[w.услуга_назв]||{n:0,rev:0,marg:0,mn:0,mRev:0};
+    o.n++; o.rev+=w.цена;
+    if(margCounted(w)){ o.mn++; o.mRev+=w.цена; o.marg+=(w.маржа||0); } });
   const keys=Object.keys(bySvc);
   if(keys.length){
     const byRev=[...keys].sort((a,b)=>bySvc[b].rev-bySvc[a].rev);
@@ -1576,13 +1593,13 @@ function renderReport(){
     const maxRev=bySvc[byRev[0]].rev;
     h+=`<div class="section-title"><span>По услугам</span></div>`;
     h+=`<div class="sm muted" style="margin:-4px 2px 8px">💰 Больше всех приносит: <b>${esc(byRev[0])}</b> · 🔁 чаще всего: <b>${esc(topFreq)}</b></div>`;
-    byRev.forEach(k=>{const o=bySvc[k]; const rp=o.rev?Math.round(o.marg/o.rev*100):0;
+    byRev.forEach(k=>{const o=bySvc[k]; const rp=o.mRev?Math.round(o.marg/o.mRev*100):0;
       h+=`<div class="card">
         <div class="row between">
           <div class="grow"><div class="title ell">${esc(k)}</div>
             <div class="sm muted">${o.n} ${plural(o.n,'работа','работы','работ')} · ср. чек ${money(o.rev/o.n)}</div></div>
           <div style="text-align:right"><div class="title mono">${money(o.rev)}</div>
-          <div class="xs" style="color:${margLevel(o.marg,o.rev).c}">маржа ${rp}%</div></div>
+          ${o.mn?`<div class="xs" style="color:${margLevel(o.marg,o.mRev).c}">маржа ${rp}%</div>`:''}</div>
         </div>
         <div class="bar" style="margin-top:9px"><i style="width:${Math.max(4,Math.round(o.rev/maxRev*100))}%"></i></div>
       </div>`;
@@ -1606,7 +1623,7 @@ function renderReport(){
     <div class="sm muted" style="margin:6px 2px 0">«Прибыль (касса)» — реальные деньги: выручка минус все траты. Маржа по услуге (цена − себестоимость) — отдельная метрика для ценообразования.</div>`;
 
   // Внимание
-  const minusN=works.filter(w=>w.маржа<0).length;
+  const minusN=margWorks.filter(w=>w.маржа<0).length;
   let wasteG=0, wasteR=0;
   works.forEach(w=>{ if(!w.остаток_смеси_г) return; let totG=0,totC=0;
     (w.шаги||[]).forEach(st=>{ const m=mById(st.материал_id); if(m){ totG+=st.факт_граммы; totC+=st.факт_граммы*gpr(m);
@@ -1815,17 +1832,16 @@ function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;',
 function fmtG(g){ return (Math.round(g*10)/10).toLocaleString('ru-RU'); }
 function plural(n,a,b,c){ n=Math.abs(n)%100; const n1=n%10;
   if(n>10&&n<20)return c; if(n1>1&&n1<5)return b; if(n1===1)return a; return c; }
+/* «1 сентября» — для фраз внутри текста, без дня недели. */
+function fmtDay(iso){ const d=new Date(iso+'T00:00');
+  const M=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+  return d.getDate()+' '+M[d.getMonth()]; }
+/* Всегда конкретная дата: «Сегодня/Вчера» в журнале сбивали — непонятно, за какое число запись. */
 function fmtDate(iso){ const d=new Date(iso+'T00:00');
   const m=['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];
-  const today=new Date().toISOString().slice(0,10);
-  if(iso===today)return 'Сегодня';
   return d.getDate()+' '+m[d.getMonth()]; }
 function fmtDateFull(iso){
   const today=new Date(); today.setHours(0,0,0,0);
-  const y=new Date(today); y.setDate(y.getDate()-1);
-  const t=today.toISOString().slice(0,10), yd=y.toISOString().slice(0,10);
-  if(iso===t) return 'Сегодня';
-  if(iso===yd) return 'Вчера';
   const d=new Date(iso+'T00:00');
   const M=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
   const wd=['вс','пн','вт','ср','чт','пт','сб'][d.getDay()];

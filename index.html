@@ -416,7 +416,7 @@ function calcCost(w, materials){
 }
 
 /* ==================== ХРАНИЛИЩЕ ==================== */
-const APP_BUILD = '2026-09-01 · 15';   // поднимать при каждой выкладке
+const APP_BUILD = '2026-09-01 · 16';   // поднимать при каждой выкладке
 const KEY = 'colorist_v7';
 let DB;
 function load(){
@@ -1688,16 +1688,22 @@ async function pullSync(){
 function syncStatusText(){
   const c=syncCfg();
   if(!c||!c.url) return 'Сервер не подключён. Данные живут только в этом браузере.';
-  let s='Сервер: '+esc(c.url.replace(/^https?:\/\//,''));
+  let s='Сервер: '+esc(c.url);   // показываем с протоколом — по http с https-страницы браузер режет запрос
+  // Страница по https, а адрес сервера по http — браузер блокирует такой запрос («Load failed»).
+  const mixed = location.protocol==='https:' && /^http:\/\//i.test(c.url);
+  if(mixed) return s+` · <span style="color:var(--red)">адрес по http, а приложение по https — браузер блокирует. Подключитесь заново, указав https://</span>`;
   if(_sync.err) return s+` · <span style="color:var(--red)">ошибка: ${esc(_sync.err)}</span>`;
   if(!_sync.at) return s+' · ещё не синхронизировано';
   const m=Math.floor((Date.now()-_sync.at)/60000);
   return s+' · <span style="color:var(--green)">синх. '+(m<1?'только что':m+' мин назад')+' ✓</span>';
 }
 async function connectSync(){
-  const url=(document.getElementById('sy_url').value||'').trim().replace(/\/+$/,'');
+  let url=(document.getElementById('sy_url').value||'').trim().replace(/\/+$/,'');
   const key=(document.getElementById('sy_key').value||'').trim();
-  if(!/^https?:\/\//.test(url)) return toast('Адрес должен начинаться с https://');
+  if(!url) return toast('Введите адрес сервера');
+  if(!/^https?:\/\//i.test(url)) url='https://'+url;             // протокол забыли — ставим сами
+  if(location.protocol==='https:' && /^http:\/\//i.test(url))
+    url='https://'+url.slice(7);                                  // http с https-страницы браузер заблокирует
   toast('Проверяю связь…');
   // При подключении сервер — источник истины: если там есть данные, берём их
   // (иначе свежеустановленное приложение затёрло бы учёт своим тестовым сидом).

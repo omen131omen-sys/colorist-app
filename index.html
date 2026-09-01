@@ -930,6 +930,9 @@ function saveMaterialW(id){
     нетто_г:+g('f_net')||1, цена_упаковки:+g('f_price')||0,
     остаток_г:+g('f_rest')||0, мин_остаток_г:+g('f_min')||0 };
   if(id){ Object.assign(mById(id), obj); } else { DB.materials.push({id:uid('m'),...obj}); }
+  // Раскрываем группу и сбрасываем поиск — иначе позиция сохранится в свёрнутый раздел
+  // и будет выглядеть как непополнившаяся.
+  _stockOpen[obj.тип]=true; _stockQuery='';
   save(); closeSheet(); go('stock'); toast('Сохранено');
 }
 function saveMaterialP(id){
@@ -1398,6 +1401,7 @@ function saveWork(){
     штучные.forEach(p=>{ const pp=pById(p.id); if(pp)pp.остаток_шт=Math.max(0,pp.остаток_шт-p.кол_во); });
   }
   const wasEdit=!!_nw._editId;
+  const былП=_wPeriod; _wPeriod=periodShowing(w.дата, _wPeriod);   // работа задним числом иначе пропала бы из фильтра
   DB.works.push(w); save(); closeSheet(); go('works');
   const notes=[];
   if(bad) notes.push(`${bad} нераспозн. строк пропущено`);
@@ -1406,7 +1410,8 @@ function saveWork(){
   const base = wasEdit ? 'Работа изменена' : (noStock ? 'Работа добавлена (задним числом)' : 'Работа проведена');
   // «склад обновлён» — только если реально списывали
   const tail = notes.length ? ' · '+notes.join(' · ') : ((noStock || !шаги.length) ? '' : ', склад обновлён');
-  toast(base + tail);
+  const PN={today:'Сегодня',week:'Неделя',month:'Месяц',all:'Всё'};
+  toast(base + tail + (_wPeriod===былП ? '' : ' · период «'+PN[_wPeriod]+'»'));
 }
 
 /* ==================== РАСХОД ==================== */
@@ -1476,7 +1481,10 @@ function saveExpense(id){
   const obj={ категория:g('ex_cat'), сумма, дата:g('ex_date')||todayISO(), заметка:g('ex_note').trim()||EXP_CATS[g('ex_cat')] };
   if(id){ const i=DB.expenses.findIndex(x=>x.id===id); if(i>=0) DB.expenses[i]={...DB.expenses[i], ...obj}; }
   else DB.expenses.push({id:uid('e'), ...obj});
-  save(); closeSheet(); go('expenses'); toast('Сохранено');
+  const был=_expPeriod; _expPeriod=periodShowing(obj.дата, _expPeriod);
+  save(); closeSheet(); go('expenses');
+  const PN={today:'Сегодня',week:'Неделя',month:'Месяц',all:'Всё'};
+  toast(_expPeriod===был ? 'Сохранено' : 'Сохранено · период переключён на «'+PN[_expPeriod]+'»');
 }
 function delExpense(id){ confirmDo('Удалить эту запись расхода?', ()=>{
   DB.expenses=DB.expenses.filter(x=>x.id!==id); save(); closeSheet(); go('expenses'); toast('Удалено'); }); }
@@ -1833,6 +1841,12 @@ function isoLocal(d){
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
 function todayISO(){ return isoLocal(new Date()); }
+/* Запись со старой датой выпадала из текущего фильтра и выглядела как несохранённая.
+   Подбираем ближайший период, в котором она видна. */
+function periodShowing(дата, текущий){
+  if(!дата || дата>=periodFrom(текущий)) return текущий;
+  return ['today','week','month','all'].find(p=>дата>=periodFrom(p)) || 'all';
+}
 /* «1 сентября» — для фраз внутри текста, без дня недели. */
 function fmtDay(iso){ const d=new Date(iso+'T00:00');
   const M=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];

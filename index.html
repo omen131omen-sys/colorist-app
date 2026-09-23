@@ -336,7 +336,8 @@ function margLevel(marg, price){
 function seed(){
   // Пустой старт: демо-данных нет. Реальные остатки приходят через
   // «Восстановить из копии» или синхронизацию с сервером.
-  return {materials:[], pieces:[], services:[], works:[], purchases:[], expenses:[], equipment:[], _v:4};
+  return {materials:[], pieces:[], services:[], works:[], purchases:[], expenses:[],
+          equipment:[], нормы:нормыПоУмолчанию(), _v:4};
 }
 
 /* Чистый разбор формулы (без DOM) — используется и в сиде, и в приложении.
@@ -344,8 +345,61 @@ function seed(){
    сериях/брендах (Lumia 6.2 и BB 6.2) — ищем подсказку в тексте («вв», «люмиа»,
    бренд); не нашли — строка помечается неоднозначной с списком кандидатов. */
 const _ALIAS={'вв':'bb','бб':'bb','люмиа':'lumia','люмия':'lumia','люми':'lumia','хс':'helen','лонда':'londa','оллин':'ollin','эстель':'estel','эстел':'estel'};
+const _ALIAS_V=new Set(Object.values(_ALIAS));
 function _matCode(m){ const c=m.название.replace(/(\d),(\d)/g,'$1.$2').match(/(\d{1,2}\.\d{1,2})/); return c?c[1]:null; }
 function _matPct(m){ const c=m.название.replace(/(\d),(\d)/g,'$1.$2').match(/(\d+(?:\.\d+)?)\s*%/); return c?c[1]:null; }
+const MAX_CAND=8;   // больше вариантов показывать бессмысленно — это уже не подсказка
+/* Подбор материала по тексту строки. Общий для формулы и прихода списком.
+   used — куски, которые вызывающий уже разобрал сам (граммы, проценты, сумма):
+   их выкидываем, чтобы голые цифры не мешали дожимать выбор. */
+function matchMaterial(norm, mats, used){
+  // слова-подсказки из строки (серия/бренд), с алиасами кириллицы
+  const tokens=(norm.match(/[a-zа-яё]{2,}/g)||[])
+    .filter(t=>!['гр','мл','шт','уп','упак','руб'].includes(t)).map(t=>_ALIAS[t]||t);
+  // Двухбуквенные обрывки («то» из «что-то») находятся внутри половины названий и
+  // дают мусорные совпадения. Ищем по словам от трёх букв — кроме алиасов («вв»→bb).
+  const ищем=tokens.filter(t=>t.length>=3 || _ALIAS_V.has(t));
+  const hay=m=>(m.название+' '+m.бренд).toLowerCase();
+  // отбор по словам: побеждают материалы с НАИБОЛЬШИМ числом совпавших слов
+  const byTokens=list=>{
+    const scored=list.map(m=>({m, n:ищем.filter(t=>hay(m).includes(t)).length})).filter(x=>x.n>0);
+    if(!scored.length) return [];
+    const max=Math.max(...scored.map(x=>x.n));
+    return scored.filter(x=>x.n===max).map(x=>x.m);
+  };
+  let cand=[];
+  const pm=norm.match(/(\d+(?:\.\d+)?)\s*%/);
+  if(pm){ cand=mats.filter(m=>m.тип==='оксид' && _matPct(m)===pm[1]); }
+  else if(/пудр|блонд|обесцв|порош|осветл/.test(norm)){ cand=mats.filter(m=>m.тип==='пудра'); }
+  else if(/бонд|плекс|plex|защит|уход|шампун|кондицион/.test(norm)){ cand=mats.filter(m=>m.тип==='уход'); }
+  else {
+    // код оттенка — ищем ТОЛЬКО среди красок
+    const cm=norm.match(/(\d{1,2}\.\d{1,2})/);
+    if(cm) cand=mats.filter(m=>m.тип==='краска' && _matCode(m)===cm[1]);
+  }
+  // по типу ничего не нашлось («бонд», а уходов на складе нет) — пробуем по словам
+  if(!cand.length && ищем.length) cand=byTokens(mats);
+  // сужаем по подсказкам («вв 6.2», «лонда 6%», «би хеир»)
+  if(cand.length>1 && ищем.length){
+    const hit=byTokens(cand);
+    if(hit.length>=1) cand=hit;
+  }
+  // «шаг 1» vs «шаг 2»: голые цифры строки (кроме уже разобранных) дожимают выбор
+  if(cand.length>1){
+    let rest=norm;
+    (used||[]).forEach(s=>{ if(s) rest=rest.replace(s,' '); });
+    rest=rest.replace(/\d{1,2}\.\d{1,2}/g,' ');
+    const digs=(rest.match(/\d{1,2}/g)||[]);
+    if(digs.length){
+      const hit=cand.filter(m=>digs.every(d=>new RegExp('(^|[^0-9.,])'+d+'([^0-9.,]|$)').test(m.название.toLowerCase())));
+      if(hit.length>=1) cand=hit;
+    }
+  }
+  // Полсклада в «кандидатах» — не подсказка, а шум: родовое слово («краска») цепляет всё.
+  // Честнее сказать «не распознано» и дать выбрать из общего списка.
+  if(cand.length>MAX_CAND) cand=[];
+  return {id:cand.length===1?cand[0].id:null, кандидаты:cand.length>1?cand.map(m=>m.id):null};
+}
 function parseFormulaText(text, mats){
   const chunks=(text||'').split(/[+\n;]+/).map(s=>s.trim()).filter(Boolean);
   const lines=[];
@@ -354,53 +408,102 @@ function parseFormulaText(text, mats){
     let grams=null;
     const gm=norm.match(/(\d+(?:\.\d+)?)\s*(?:гр|г|g|мл|ml)(?![а-яёa-z])/i);
     if(gm) grams=parseFloat(gm[1]);
-    // слова-подсказки из строки (серия/бренд), с алиасами кириллицы
-    const tokens=(norm.match(/[a-zа-яё]{2,}/g)||[]).filter(t=>!['гр','мл'].includes(t)).map(t=>_ALIAS[t]||t);
-    const hay=m=>(m.название+' '+m.бренд).toLowerCase();
-    // отбор по словам: побеждают материалы с НАИБОЛЬШИМ числом совпавших слов
-    const byTokens=list=>{
-      const scored=list.map(m=>({m, n:tokens.filter(t=>hay(m).includes(t)).length})).filter(x=>x.n>0);
-      if(!scored.length) return [];
-      const max=Math.max(...scored.map(x=>x.n));
-      return scored.filter(x=>x.n===max).map(x=>x.m);
-    };
-    let cand=[];
-    const pm=norm.match(/(\d+(?:\.\d+)?)\s*%/);
-    if(pm){ cand=mats.filter(m=>m.тип==='оксид' && _matPct(m)===pm[1]); }
-    else if(/пудр|блонд|обесцв|порош|осветл/.test(norm)){ cand=mats.filter(m=>m.тип==='пудра'); }
-    else if(/бонд|плекс|plex|защит|уход|шампун|кондицион/.test(norm)){ cand=mats.filter(m=>m.тип==='уход'); }
-    else {
-      // код оттенка — ищем ТОЛЬКО среди красок
-      const cm=norm.match(/(\d{1,2}\.\d{1,2})/);
-      if(cm) cand=mats.filter(m=>m.тип==='краска' && _matCode(m)===cm[1]);
-      // код не нашёлся или его нет, но есть слова — ищем по названию во всех типах (уходы, пудры)
-      if(!cand.length && tokens.some(t=>t.length>=3)) cand=byTokens(mats);
-    }
-    // сужаем по подсказкам («вв 6.2», «лонда 6%», «би хеир»)
-    if(cand.length>1 && tokens.length){
-      const hit=byTokens(cand);
-      if(hit.length>=1) cand=hit;
-    }
     let bn=null;
     if(grams==null){ bn=norm.match(/(\d+(?:\.\d+)?)\s*$/); if(bn) grams=parseFloat(bn[1]); }
-    // «шаг 1» vs «шаг 2»: голые цифры строки (кроме граммов/%/кода оттенка) дожимают выбор
-    if(cand.length>1){
-      let rest=norm;
-      [gm&&gm[0], pm&&pm[0], bn&&bn[0]].forEach(s=>{ if(s) rest=rest.replace(s,' '); });
-      rest=rest.replace(/\d{1,2}\.\d{1,2}/g,' ');
-      const digs=(rest.match(/\d{1,2}/g)||[]);
-      if(digs.length){
-        const hit=cand.filter(m=>digs.every(d=>new RegExp('(^|[^0-9.,])'+d+'([^0-9.,]|$)').test(m.название.toLowerCase())));
-        if(hit.length>=1) cand=hit;
-      }
-    }
-    if(grams!=null || cand.length){
-      lines.push({материал_id:cand.length===1?cand[0].id:null, граммы:grams||0, raw:ch,
-        кандидаты:cand.length>1?cand.map(m=>m.id):null});
+    const pm=norm.match(/(\d+(?:\.\d+)?)\s*%/);
+    const r=matchMaterial(norm, mats, [gm&&gm[0], pm&&pm[0], bn&&bn[0]]);
+    if(grams!=null || r.id || r.кандидаты){
+      lines.push({материал_id:r.id, граммы:grams||0, raw:ch, кандидаты:r.кандидаты});
     }
   });
   return lines;
 }
+/* Разбор списка покупок: накладная, сообщение поставщику, свои заметки.
+   Строка = позиция. Сами достаём количество упаковок и сумму, остальное — на подбор. */
+function parseIncomingText(text, mats){
+  return (text||'').split(/[\n;]+/).map(s=>s.trim()).filter(Boolean).map(ch=>{
+    const norm=ch.toLowerCase().replace(/(\d),(\d)/g,'$1.$2');
+    // сумма: «620 ₽», «620 руб», «— 620» в конце, иначе последнее крупное число строки
+    let sm=norm.match(/(\d+(?:\.\d+)?)\s*(?:₽|руб\w*|р\.|р(?![а-яё]))/);
+    if(!sm) sm=norm.match(/[=—–-]\s*(\d{3,}(?:\.\d+)?)\s*$/);
+    if(!sm) sm=norm.match(/(\d{3,}(?:\.\d+)?)\s*$/);
+    // количество упаковок: «2 шт», «2 уп», «х2» (латинская x внутри слова не считается)
+    let qm=norm.match(/(\d+(?:\.\d+)?)\s*(?:шт|уп\w*)(?![а-яё])/);
+    if(!qm) qm=norm.match(/(?:^|[^a-zа-яё])[хx×*]\s*(\d+(?:\.\d+)?)/);
+    const pm=norm.match(/(\d+(?:\.\d+)?)\s*%/);
+    const r=matchMaterial(norm, mats, [sm&&sm[0], qm&&qm[0], pm&&pm[0]]);
+    return incFill({материал_id:r.id, кандидаты:r.кандидаты, raw:ch, граммы:null,
+      уп:qm?parseFloat(qm[1]):null, сумма:sm?parseFloat(sm[1]):null});
+  });
+}
+/* Автоподстановка по понятным позициям: чего в строке не было — достраиваем из
+   карточки материала, чтобы сверять глазами, а не набивать руками. */
+function incFill(r){
+  const m=r.материал_id?mById(r.материал_id):null;
+  if(!m) return r;
+  if(r.уп==null && r.сумма!=null && m.цена_упаковки>0){
+    // сумма делится на цену почти ровно — значит столько упаковок и взяли
+    const n=r.сумма/m.цена_упаковки;
+    r.уп=(Math.round(n)>=1 && Math.abs(n-Math.round(n))<=0.12) ? Math.round(n) : 1;
+  }
+  if(r.уп==null) r.уп=1;
+  if(r.граммы==null) r.граммы=Math.round(r.уп*m.нетто_г*10)/10;
+  if(r.сумма==null) r.сумма=Math.round(r.уп*m.цена_упаковки);
+  return r;
+}
+
+/* ==================== НОРМЫ РАСХОДА ====================
+   То, что тратится на клиента, но на складе не ведётся. Уход считаем граммами
+   по средней цене (5 шампуней разных марок = одна средняя цена за грамм), мелочь —
+   фиксированной суммой за работу. «Накидка» — процент на погрешность поверх строки.
+   В Расход это не попадает: деньги учитываются в момент покупки, тут только маржа. */
+const ЕД={г:'г', шт:'шт', раб:'за работу'};
+function нормыПоУмолчанию(){
+  return [
+    {id:'nsh', название:'Шампунь', ед:'г', цена:1.63, накидка:0},
+    {id:'nma', название:'Маска', ед:'г', цена:4.37, накидка:0},
+    {id:'nko', название:'Кондиционер / бальзам', ед:'г', цена:1.27, накидка:0},
+    {id:'nme', название:'Мелочь', ед:'раб', цена:161, накидка:10, всем:true,
+     заметка:'сервисные расходы, стайлинг, перчатки, ватные диски, полотенца'},
+    {id:'nmo', название:'Расход на модель', ед:'раб', цена:300, накидка:0,
+     заметка:'вся мелочь и уход одной суммой'},
+  ];
+}
+/* Разовая раскладка типового расхода по услугам прайса — чтобы не забивать руками.
+   Третий элемент — отключить общие строки: у модели свои 300 ₽ на всё про всё. */
+const ТИПОВОЙ_РАСХОД=[
+  [/консульт/i,            {nsh:5,  nko:5}],
+  [/молекуляр|^\s*уход/i,  {nsh:15, nma:30, nko:10}],
+  [/тонирован/i,           {nsh:20, nma:10, nko:10}],
+  [/однотон/i,             {nsh:25, nko:15}],
+  [/контуринг/i,           {nsh:20, nma:15, nko:10}],
+  [/сложн/i,               {nsh:30, nma:30, nko:15}],
+  [/чёрн|черн|тёмн|темн/i, {nsh:40, nma:30, nko:15}],
+  [/модел/i,               {nmo:1}, true],
+];
+function нById(id){ return (DB.нормы||[]).find(n=>n.id===id); }
+function нормаСумма(n){ return (n.кол||0)*(n.цена||0)*(1+(n.накидка||0)/100); }
+/* Строки типового расхода услуги: свои плюс общие («Мелочь» идёт во все работы). */
+function нормыУслуги(s){
+  const out=((s&&s.нормы)||[]).filter(x=>нById(x.id)).map(x=>({id:x.id, кол:x.кол||0}));
+  if(!s || !s.без_общих) (DB.нормы||[]).filter(n=>n.всем).forEach(n=>{
+    if(!out.find(o=>o.id===n.id)) out.push({id:n.id, кол:1});
+  });
+  return out;
+}
+/* Снимок в работу: цены со временем меняются, а старая работа должна остаться как была. */
+function снимокНорм(list){
+  return (list||[]).map(x=>{
+    const n=нById(x.id); if(!n) return null;
+    return {норма_id:n.id, название:n.название, ед:n.ед, кол:x.кол||0,
+            цена:n.цена||0, накидка:n.накидка||0};
+  }).filter(x=>x && x.кол>0);
+}
+
+/* Сколько реально ушло со склада по шагу работы. У старых записей поля нет —
+   там списание в ноль не упиралось, берём запрошенное. */
+function спис(s){ return s.списано!=null ? s.списано : (s.факт_граммы||0); }
+function списШт(p){ return p.списано!=null ? p.списано : (p.кол_во||0); }
 
 /* стоимость работы по её шагам (без списания склада) */
 function calcCost(w, materials){
@@ -412,16 +515,23 @@ function calcCost(w, materials){
     if(ox) c += (s.факт_оксида||0)*gpr(ox);
   });
   (w.штучные||[]).forEach(p=> c += (p.кол_во||0)*(p.цена_за_штуку||0));
+  (w.нормы||[]).forEach(n=> c += нормаСумма(n));
   return Math.round(c);
 }
 
 /* ==================== ХРАНИЛИЩЕ ==================== */
-const APP_BUILD = '2026-09-01 · 19';   // поднимать при каждой выкладке
+const APP_BUILD = '2026-09-23 · 24';   // поднимать при каждой выкладке
 const KEY = 'colorist_v7';
 let DB;
 function load(){
   try{ DB = JSON.parse(localStorage.getItem(KEY)); }catch(e){ DB=null; }
   if(!DB || !DB.materials){ DB = seed(); save(); }
+  мигрируй();
+}
+/* Дочистка базы до текущего формата. Вызывается не только при старте: данные приезжают
+   ещё и с сервера, и из файла копии — там они в том виде, в каком их сохранило старое
+   приложение, и без этой обработки поедут цены и типовой расход. */
+function мигрируй(){
   if(!DB.purchases) DB.purchases=[];
   // Единый журнал расходов + список оборудования
   if(!DB.expenses){
@@ -429,6 +539,29 @@ function load(){
       сумма:b.сумма||0, заметка:(b.название||'Закупка')+(b.кол?' · '+b.кол:''), материал_id:b.материал_id||null}));
   }
   if(!DB.equipment) DB.equipment=[];
+  if(!DB.нормы) DB.нормы=нормыПоУмолчанию();
+  // Типовой расход раскладываем по услугам один раз: дальше это её данные, не наши.
+  if(!DB._нормы1){
+    (DB.services||[]).forEach(s=>{
+      if(s.нормы) return;
+      const hit=ТИПОВОЙ_РАСХОД.find(([re])=>re.test(s.название||''));
+      s.нормы = hit ? Object.keys(hit[1]).map(id=>({id, кол:hit[1][id]})) : [];
+      if(hit && hit[2]) s.без_общих=true;
+    });
+    DB._нормы1=1;
+  }
+  // Сентябрьские работы заносились до того, как появился типовой расход — проставляем его
+  // задним числом и пересчитываем маржу. Август не трогаем: там и материалы не заносились.
+  if(!DB._нормыРаботы1){
+    (DB.works||[]).forEach(w=>{
+      if(!margCounted(w) || (w.нормы||[]).length) return;
+      const s=sById(w.услуга_id); if(!s) return;
+      w.нормы=снимокНорм(нормыУслуги(s));
+      w.себестоимость=calcCost(w, DB.materials);
+      w.маржа=w.цена-w.себестоимость;
+    });
+    DB._нормыРаботы1=1;
+  }
   // Оксиды у разных брендов зовутся одинаково («Оксид 6%»), в выпадашке было не различить —
   // дописываем бренд в название. Идемпотентно: второй раз не добавится.
   (DB.materials||[]).forEach(m=>{
@@ -473,7 +606,11 @@ function go(tab){
   window.scrollTo(0,0);
 }
 function fabFor(tab){
-  if(tab==='stock') return `<button class="btn" onclick="editMaterial()">＋ Добавить материал</button>`;
+  // Приход бывает после каждой закупки, новый материал — редко: ему хватит «＋».
+  if(tab==='stock') return `<div class="row" style="gap:8px">
+    <button class="btn" style="flex:1;width:auto" onclick="incomingSheet()">📥 Приход списком</button>
+    <button class="btn ghost" style="flex:none;width:54px;padding:12px 0" onclick="editMaterial()" aria-label="Добавить материал">＋</button>
+  </div>`;
   if(tab==='services') return `<button class="btn" onclick="editService()">＋ Новая услуга</button>`;
   if(tab==='works') return `<button class="btn" onclick="newWork()">＋ Работа</button>`;
   if(tab==='expenses') return `<button class="btn" onclick="editExpense()">＋ Добавить расход</button>`;
@@ -586,7 +723,7 @@ function renderStockBody(){
     h += accHeader(g.k, g.ic, g.title, items.length, lowN, open);
     if(open) h += `<div class="mgrid">` + items.map(matCardHtml).join('') + `</div>`;
   });
-  if(!DB.materials.length) h += emptyBox('📦','Склад пуст','Кнопка «＋ Добавить материал» внизу. Или загрузите копию: ⚙️ Настройки → «Восстановить из копии»');
+  if(!DB.materials.length) h += emptyBox('📦','Склад пуст','Кнопка «＋» внизу справа. Или загрузите копию: ⚙️ Настройки → «Восстановить из копии»');
   return h;
 }
 const LINE_ICONS = {
@@ -786,6 +923,170 @@ function logPurchase(o){
     сумма:o.сумма||0, заметка:(o.название||'Закупка')+(o.кол?' · '+o.кол:''), материал_id:o.материал_id||null});
 }
 
+/* ==================== ПРИХОД СПИСКОМ ==================== */
+/* Варианты для выпадашки материала. Кандидаты подбора — наверх, остальные — как на складе.
+   Бренд в подписи: иначе «Оксид 6%» от разных марок не различить. */
+function matOptions(id, candIds){
+  let h='';
+  if(candIds&&candIds.length){
+    h+=candIds.map(cid=>{const c=mById(cid); return c?`<option value="${c.id}">${esc(c.название)} (${esc(c.бренд)})</option>`:'';}).join('');
+    h+=`<option value="" disabled>──────────</option>`;
+  }
+  h+=sortMats(DB.materials).map(m=>
+    `<option value="${m.id}" ${m.id===id?'selected':''}>${esc(withBrand(m.название,m.бренд))}</option>`).join('');
+  return h;
+}
+/* Черновик живёт между открытиями: можно закрыть, завести недостающий материал и вернуться. */
+let _inc=null;
+function incomingSheet(){
+  if(!DB.materials.length) return toast('Сначала заведите материалы на складе');
+  if(!_inc) _inc={text:'', rows:[], дата:todayISO(), вРасход:true};
+  if(!_inc.дата) _inc.дата=todayISO();
+  drawIncoming();
+}
+function incParse(){
+  const el=document.getElementById('inc_text');
+  if(el) _inc.text=el.value;
+  const t=(_inc.text||'').trim();
+  if(!t) return toast('Вставьте список');
+  const rows=parseIncomingText(t, DB.materials);
+  if(!rows.length) return toast('Не удалось разобрать список');
+  _inc.rows=rows; drawIncoming();
+  const bad=rows.filter(r=>!r.материал_id).length;
+  toast(bad ? `Разобрано, уточните ${bad} ${plural(bad,'позицию','позиции','позиций')}`
+            : 'Список разобран ✓');
+}
+function incClear(){ _inc={text:'', rows:[], дата:todayISO(), вРасход:true}; drawIncoming(); }
+function incDel(i){ _inc.rows.splice(i,1); drawIncoming(); }
+/* Правка строки. Смена материала или количества пересчитывает граммы и сумму —
+   но только те, которых не трогали руками: введённое вручную важнее подстановки. */
+function incSet(i, поле, v){
+  const r=_inc.rows[i]; if(!r) return;
+  if(поле==='г'){ r.граммы=+v||0; r._gТронут=true; return incTotals(); }
+  if(поле==='с'){ r.сумма=+v||0; r._sТронут=true; return incTotals(); }
+  if(поле==='m'){ r.материал_id=v||null; r.кандидаты=null; }
+  if(поле==='уп'){ r.уп=+v||0; }
+  if(!r._gТронут) r.граммы=null;
+  if(!r._sТронут) r.сумма=null;
+  incFill(r); drawIncoming();
+}
+function incRowHtml(r, i){
+  const m=r.материал_id?mById(r.материал_id):null;
+  const amb=!m && r.кандидаты && r.кандидаты.length;
+  const style = amb ? 'border-color:#f2ddb0;background:var(--amber-soft)'
+              : !m ? 'border-color:#f3bcbc;background:var(--red-soft)' : '';
+  const label = amb ? '<span style="color:var(--amber)">найдено несколько — выберите</span>'
+              : !m ? '<span style="color:var(--red)">не распознано — выберите</span>'
+              : TYPE[m.тип];
+  const ценаНов = (r.сумма>0 && r.уп>0) ? Math.round(r.сумма/r.уп) : 0;
+  const ценаИзм = m && ценаНов && Math.abs(ценаНов-m.цена_упаковки)>=1;
+  // Цена за грамм скакнула в разы — почти всегда это другая фасовка (взяла литр вместо 5 л),
+  // а не новая цена. Молча переписать цену упаковки = испортить себестоимость всех работ.
+  const скачок = ценаИзм && m.цена_упаковки>0 &&
+    (ценаНов/m.цена_упаковки>1.5 || ценаНов/m.цена_упаковки<0.67);
+  const v=x=>x==null?'':x;
+  return `<div class="step-card" style="${style}">
+    <div class="row between" style="margin-bottom:7px">
+      <span class="xs muted ell grow">«${esc(r.raw)}»</span>
+      <span class="iconbtn" style="flex:none;width:28px;height:28px" onclick="incDel(${i})">✕</span>
+    </div>
+    <label class="fld" style="margin-bottom:8px"><span>${label}</span>
+      <select onchange="incSet(${i},'m',this.value)">
+        <option value="">— выбрать —</option>${matOptions(r.материал_id, amb?r.кандидаты:null)}
+      </select></label>
+    <div class="fld-row" style="gap:8px">
+      <label class="fld" style="margin-bottom:0"><span>Упак.</span>
+        <input type="number" inputmode="decimal" step="0.5" value="${v(r.уп)}" onchange="incSet(${i},'уп',this.value)"></label>
+      <label class="fld" style="margin-bottom:0"><span>Грамм</span>
+        <input type="number" inputmode="numeric" value="${v(r.граммы)}" onchange="incSet(${i},'г',this.value)"></label>
+      <label class="fld" style="margin-bottom:0"><span>Сумма, ₽</span>
+        <input type="number" inputmode="numeric" value="${v(r.сумма)}" onchange="incSet(${i},'с',this.value)"></label>
+    </div>
+    ${m?`<div class="xs muted" style="margin-top:7px">Остаток ${fmtG(m.остаток_г)} → <b>${fmtG(m.остаток_г+(r.граммы||0))}</b> г · 1 уп. = ${fmtG(m.нетто_г)} г · цена уп. ${
+      ценаИзм?`${money(m.цена_упаковки)} → <b style="color:var(--amber)">${money(ценаНов)}</b>`:money(m.цена_упаковки)}</div>`:''}
+    ${скачок?`<div class="xs" style="margin-top:6px;color:var(--red)">⚠ цена упаковки меняется в ${
+      (ценаНов>m.цена_упаковки?ценаНов/m.цена_упаковки:m.цена_упаковки/ценаНов).toFixed(1)} раза. Похоже, фасовка другая: в карточке 1 уп. = ${fmtG(m.нетто_г)} г. Поправь «Упак.» и «Грамм» — иначе себестоимость поедет.</div>`:''}
+  </div>`;
+}
+function incSumHtml(){
+  const rows=_inc.rows, готовы=rows.filter(incReady);
+  const г=готовы.reduce((s,r)=>s+(r.граммы||0),0);
+  const с=готовы.reduce((s,r)=>s+(r.сумма||0),0);
+  const нет=rows.length-готовы.length;
+  return `<div class="kv"><span class="k">Позиций к проведению</span><span class="v">${готовы.length}${
+      нет?` <span class="xs" style="color:var(--red)">· ${нет} не готово</span>`:''}</span></div>
+    <div class="kv"><span class="k">Придёт на склад</span><span class="v">+${fmtG(г)} г</span></div>
+    <div class="kv"><span class="k">Итого сумма</span><span class="v">${money(с)}</span></div>`;
+}
+function incReady(r){ return !!r.материал_id && ((r.граммы||0)>0 || (r.сумма||0)>0); }
+function incTotals(){ const el=document.getElementById('inc_sum'); if(el) el.innerHTML=incSumHtml(); }
+function drawIncoming(){
+  const rows=_inc.rows;
+  const готово=rows.filter(incReady).length;
+  openSheet('Приход списком', `
+    <div class="sm muted" style="margin-bottom:10px">Вставь список покупок — по строке на позицию. Что понятно, подставится само; останется сверить граммы и цены.</div>
+    <div class="card" style="background:var(--brand-soft);border-color:#e0d6ff">
+      <div class="xs" style="color:var(--brand);font-weight:700;margin-bottom:6px">СПИСОК ПОКУПОК</div>
+      <textarea id="inc_text" rows="4" style="resize:vertical" onchange="_inc.text=this.value"
+        placeholder="Lumia 6.2 — 2 шт — 1240&#10;Оксид 6% 1 уп 450&#10;пудра х2 1800">${esc(_inc.text||'')}</textarea>
+      <div class="row" style="gap:8px;margin-top:8px">
+        <button class="btn sm" style="flex:1;width:auto" onclick="incParse()">🔎 Разобрать</button>
+        ${rows.length?`<button class="btn sm ghost" style="flex:none" onclick="incClear()">Очистить</button>`:''}
+      </div>
+    </div>
+    ${rows.length?`
+      <div class="section-title"><span>Сверка</span><span class="muted mono">${готово} из ${rows.length}</span></div>
+      ${rows.map(incRowHtml).join('')}
+      <div class="fld-row" style="align-items:flex-end;margin-top:4px">
+        <label class="fld" style="flex:1"><span>Дата покупки</span>
+          <input type="date" value="${_inc.дата}" onchange="_inc.дата=this.value"></label>
+        <label class="chk" style="flex:1;margin-bottom:12px">
+          <input type="checkbox" ${_inc.вРасход?'checked':''} onchange="_inc.вРасход=this.checked">
+          <span>В расход<br><span class="xs muted">записать траты</span></span>
+        </label>
+      </div>
+      <div class="sm muted" style="margin:-4px 0 10px">Дата одна на всю накладную: купила в августе — поставь ту, траты лягут в август.</div>
+      <div class="card" id="inc_sum">${incSumHtml()}</div>`
+    :`<div class="sm muted" style="margin:2px 2px 10px">Позиции, которой нет на складе, парсер не найдёт — заведи её через ＋ и нажми «Разобрать» ещё раз. Список никуда не денется.</div>`}
+  `, rows.length
+    ? [`<button class="btn ghost" onclick="closeSheet()">Отмена</button>`,
+       `<button class="btn" onclick="doIncoming()">📥 Провести приход</button>`]
+    : [`<button class="btn ghost" onclick="closeSheet()">Закрыть</button>`]);
+}
+function doIncoming(){
+  const rows=_inc.rows.filter(incReady);
+  if(!rows.length) return toast('Нечего проводить — уточните позиции');
+  const дата=_inc.дата||todayISO(), вРасход=!!_inc.вРасход;
+  let итогГ=0, итогС=0, ценИзм=0;
+  rows.forEach(r=>{
+    const m=mById(r.материал_id); if(!m) return;
+    const add=r.граммы||0, packs=r.уп||0, сумма=r.сумма||0;
+    m.остаток_г=Math.round((m.остаток_г+add)*10)/10;
+    // цена изменилась → запоминаем новую; цену до/после храним для отката закупки
+    const ценаДо=m.цена_упаковки;
+    if(сумма>0 && packs>0){
+      const нов=Math.round(сумма/packs);
+      if(Math.abs(нов-m.цена_упаковки)>=1){ m.цена_упаковки=нов; ценИзм++; }
+    }
+    if(вРасход && сумма>0) logPurchase({материал_id:m.id, название:m.название,
+      кол:packs>0?packs+' уп.':fmtG(add)+' г', граммы:add, сумма, дата,
+      цена_до:ценаДо, цена_после:m.цена_упаковки});
+    _stockOpen[m.тип]=true;
+    итогГ+=add; итогС+=сумма;
+  });
+  // недоделанные строки не теряем — остаются черновиком до следующего раза
+  const остались=_inc.rows.filter(r=>!incReady(r));
+  _inc = остались.length ? {text:_inc.text, rows:остались, дата, вРасход} : null;
+  _stockQuery='';
+  save(); closeSheet(); go('stock');
+  const хвост=[];
+  if(ценИзм) хвост.push(ценИзм+' ц. обновлено');
+  if(остались.length) хвост.push(остались.length+' в черновике');
+  toast(`Приход: ${rows.length} ${plural(rows.length,'позиция','позиции','позиций')} · +${fmtG(итогГ)} г`
+    + (вРасход&&итогС?' · расход '+money(итогС):'')
+    + (хвост.length?' · '+хвост.join(' · '):''));
+}
+
 function editMaterial(id){
   const m = id?mById(id):null;
   openSheet(m?'Изменить материал':'Новый материал', `<div id="matForm"></div>`, []);
@@ -960,6 +1261,15 @@ function svcSheet(id){
       })()}
       ${s.заметка?`<div class="sm muted" style="padding-top:8px">📌 ${esc(s.заметка)}</div>`:''}
     </div>
+    ${(()=>{
+      const нн=снимокНорм(нормыУслуги(s));
+      if(!нн.length) return '';
+      const итог=нн.reduce((x,n)=>x+нормаСумма(n),0);
+      return `<div class="section-title"><span>Типовой расход</span><span class="muted mono">${money(итог)}</span></div>
+      <div class="card">${нн.map(n=>`<div class="kv"><span class="k">${esc(n.название)}${
+        n.ед==='раб'?'':' · '+fmtG(n.кол)+' '+ЕД[n.ед]}${n.накидка?` <span class="xs">+${n.накидка}%</span>`:''
+        }</span><span class="v">${money(нормаСумма(n))}</span></div>`).join('')}</div>`;
+    })()}
     ${st?`<div class="section-title"><span>Факт по журналу</span></div>
     <div class="card">
       <div class="kv"><span class="k">Проведено работ</span><span class="v">${st.n}</span></div>
@@ -977,11 +1287,51 @@ function svcSheet(id){
 }
 function delService(id){ confirmDo('Удалить услугу?', ()=>{
   DB.services=DB.services.filter(s=>s.id!==id); save(); closeSheet(); go('services'); toast('Удалено'); }); }
-let _seIcon='капля';
+let _seIcon='капля', _seНормы=[], _seБезОбщих=false;
 function pickSeIcon(k){ _seIcon=k; document.querySelectorAll('#seIcons .icpick').forEach(b=>b.classList.toggle('on', b.dataset.k===k)); }
+/* Редактор типового расхода в услуге. Показываем сразу все нормы: 0 — значит не используется,
+   добавлять-удалять строки не надо. Общие («Мелочь») отдельно, их можно отключить целиком. */
+function seНормыКол(id){ const x=_seНормы.find(o=>o.id===id); return x?x.кол:0; }
+function setSeНорма(id, v){
+  const кол=+v||0, i=_seНормы.findIndex(o=>o.id===id);
+  if(i>=0) _seНормы[i].кол=кол; else _seНормы.push({id, кол});
+  drawSeНормы();
+}
+function drawSeНормы(){
+  const box=document.getElementById('seНормы'); if(!box) return;
+  const свои=(DB.нормы||[]).filter(n=>!n.всем);
+  const общие=(DB.нормы||[]).filter(n=>n.всем);
+  let итог=свои.reduce((s,n)=>s+нормаСумма({кол:seНормыКол(n.id), цена:n.цена, накидка:n.накидка}),0);
+  if(!_seБезОбщих) итог+=общие.reduce((s,n)=>s+нормаСумма({кол:1, цена:n.цена, накидка:n.накидка}),0);
+  box.innerHTML = (свои.length?svoiHtml(свои):'<div class="sm muted">Справочник норм пуст: ⚙️ Настройки → «Нормы расхода».</div>')
+    + (общие.length?`<div class="divider"></div>
+      <label class="chk" style="margin-bottom:6px">
+        <input type="checkbox" ${_seБезОбщих?'':'checked'} onchange="_seБезОбщих=!this.checked;drawSeНормы()">
+        <span>${общие.map(n=>esc(n.название)+' — '+money(нормаСумма({кол:1,цена:n.цена,накидка:n.накидка}))).join(', ')}
+        <br><span class="xs muted">общая строка, идёт во все услуги</span></span>
+      </label>`:'');
+  const t=document.getElementById('seНормыИтог'); if(t) t.textContent=money(итог);
+}
+function svoiHtml(свои){
+  return свои.map(n=>{
+    const кол=seНормыКол(n.id);
+    return `<div class="row" style="gap:9px;padding:6px 0">
+      <div class="grow" style="min-width:0">
+        <div class="sm ell" style="font-weight:600">${esc(n.название)}</div>
+        <div class="xs muted">${money1(n.цена)}/${ЕД[n.ед]}</div>
+      </div>
+      <input type="number" inputmode="numeric" value="${кол||''}" placeholder="0" aria-label="${ЕД[n.ед]}"
+        style="flex:none;width:74px;padding:9px;text-align:center"
+        onchange="setSeНорма('${n.id}',this.value)">
+      <span class="mono xs muted" style="flex:none;width:58px;text-align:right">${кол?money(нормаСумма({кол,цена:n.цена,накидка:n.накидка})):'—'}</span>
+    </div>`;
+  }).join('');
+}
 function editService(id){
   const s = id?sById(id):{id:uid('s'), название:'', иконка:'капля', цена_от:2000, цена_до:0, время_мин:60};
   _seIcon = SVC_ICONS[s.иконка]?s.иконка:'капля';
+  _seНормы = (s.нормы||[]).map(x=>({id:x.id, кол:x.кол||0}));
+  _seБезОбщих = !!s.без_общих;
   openSheet(id?'Изменить услугу':'Новая услуга', `
     <label class="fld"><span>Название</span><input id="se_name" value="${esc(s.название)}" placeholder="Окрашивание в один тон"></label>
     <label class="fld"><span>Иконка</span>
@@ -998,8 +1348,12 @@ function editService(id){
     <label class="fld"><span>Примечание <span class="xs muted">(не обяз.)</span></span>
       <input id="se_note" value="${esc(s.заметка||'')}" placeholder="доплата за густоту/длину до 5000 ₽"></label>
     <div class="sm muted" style="margin-top:-4px">Это прайс-лист: цена ориентировочная. «До» заполняй, если цена или время плавают — покажется вилкой. Точную сумму впишешь, когда будешь проводить работу.</div>
+    <div class="section-title"><span>Типовой расход</span><span class="muted mono" id="seНормыИтог"></span></div>
+    <div class="card" id="seНормы"></div>
+    <div class="sm muted" style="margin:-4px 2px 0">Сколько уходит на клиента по этой услуге. Подставится само при проведении работы и ляжет в себестоимость. На складе не списывается и в Расход не попадает — деньги учитываются, когда покупаешь.</div>
   `, [`<button class="btn ghost" onclick="closeSheet()">Отмена</button>`,
       `<button class="btn" onclick="saveService('${id||''}','${s.id}')">Сохранить</button>`]);
+  drawSeНормы();
 }
 function saveService(id, newId){
   const g=x=>document.getElementById(x).value;
@@ -1011,7 +1365,8 @@ function saveService(id, newId){
   if(тдо && тдо<тот) [тот,тдо]=[тдо,тот];
   if(тдо===тот) тдо=0;
   const obj={ id:id||newId, название:name, иконка:_seIcon||'капля',
-    цена_от:от, цена_до:до, время_мин:тот, время_до:тдо, заметка:g('se_note').trim() };
+    цена_от:от, цена_до:до, время_мин:тот, время_до:тдо, заметка:g('se_note').trim(),
+    нормы:_seНормы.filter(x=>x.кол>0 && нById(x.id)), без_общих:_seБезОбщих };
   if(id){ const i=DB.services.findIndex(s=>s.id===id); DB.services[i]=obj; }
   else DB.services.push(obj);
   save(); closeSheet(); go('services'); toast('Сохранено');
@@ -1121,11 +1476,15 @@ function workSheet(id){
     </div>`;
   }).join('');
   const pieces=(w.штучные||[]).map(p=>`<div class="kv"><span class="k">${esc(p.название)}</span><span class="v">${p.кол_во} шт</span></div>`).join('');
+  const нормы=(w.нормы||[]).map(n=>`<div class="kv"><span class="k">${esc(n.название)}${
+    n.ед==='раб'?'':' · '+fmtG(n.кол)+' '+ЕД[n.ед]}${n.накидка?` <span class="xs">+${n.накидка}%</span>`:''
+    }</span><span class="v">${money(нормаСумма(n))}</span></div>`).join('');
   openSheet(esc(w.услуга_назв), `
     <div class="sm muted" style="margin-bottom:10px">${fmtDate(w.дата)} · ${esc(w.услуга_назв)}</div>
     ${w.формула?`<div class="card" style="background:var(--brand-soft);border-color:#e0d6ff"><div class="xs" style="color:var(--brand);font-weight:700;margin-bottom:4px">ФОРМУЛА ИЗ DIKIDI</div><div class="sm mono">${esc(w.формула)}</div></div>`:''}
     ${steps}
     ${pieces?`<div class="card">${pieces}</div>`:''}
+    ${нормы?`<div class="section-title"><span>Типовой расход</span></div><div class="card">${нормы}</div>`:''}
     <div class="card">
       <div class="kv"><span class="k">Остаток смеси (в отход)</span><span class="v">${w.остаток_смеси_г} г</span></div>
       <div class="kv"><span class="k">Цена</span><span class="v">${money(w.цена)}</span></div>
@@ -1141,10 +1500,12 @@ function editWork(id){
   const w=DB.works.find(x=>x.id===id); if(!w) return;
   const orig={};
   // Для работ, списанных со склада, помним прежние граммы — чтобы availFor не считал их дефицитом при правке.
-  if(!w.без_склада) (w.шаги||[]).forEach(s=>{ orig[s.материал_id]=(orig[s.материал_id]||0)+s.факт_граммы; });
+  if(!w.без_склада) (w.шаги||[]).forEach(s=>{ orig[s.материал_id]=(orig[s.материал_id]||0)+спис(s); });
   _nw={услуга_id:w.услуга_id,
     lines:(w.шаги||[]).map(s=>({материал_id:s.материал_id, граммы:s.факт_граммы})),
     штучные:(w.штучные||[]).map(p=>({id:p.id, кол_во:p.кол_во})),
+    // у старых работ норм нет — подставлять задним числом не будем, себестоимость уехала бы
+    нормы:(w.нормы||[]).map(n=>({id:n.норма_id, кол:n.кол})),
     остаток:w.остаток_смеси_г||0, формула:w.формула||'', цена:w.цена||0, время:w.время||(sById(w.услуга_id)||{}).время_мин||0,
     _editId:id, _date:w.дата, _noStock:!!w.без_склада, _origByMat:orig};
   drawNewWork();
@@ -1177,9 +1538,9 @@ function delWork(id){
     const w=DB.works.find(x=>x.id===id);
     // возврат на склад — только если работа реально списывалась
     if(w && !w.без_склада){
-      (w.шаги||[]).forEach(s=>{ const m=mById(s.материал_id); if(m)m.остаток_г+=s.факт_граммы;
+      (w.шаги||[]).forEach(s=>{ const m=mById(s.материал_id); if(m)m.остаток_г=Math.round((m.остаток_г+спис(s))*10)/10;
         const ox=mById(s.оксид_id); if(ox)ox.остаток_г+=s.факт_оксида; });
-      (w.штучные||[]).forEach(p=>{ const pp=pById(p.id); if(pp)pp.остаток_шт+=p.кол_во; });
+      (w.штучные||[]).forEach(p=>{ const pp=pById(p.id); if(pp)pp.остаток_шт+=списШт(p); });
     }
     DB.works=DB.works.filter(x=>x.id!==id); save(); closeSheet(); go('works'); toast((w&&w.без_склада)?'Удалено':'Удалено, склад пополнен');
   });
@@ -1190,7 +1551,7 @@ let _nw=null;
 function matName(id){ const m=mById(id); return m?m.название:'—'; }
 function newWork(svcId){
   if(!DB.services.length) return toast('Сначала добавьте услугу');
-  _nw={услуга_id:svcId||DB.services[0].id, lines:[], штучные:[], остаток:0, формула:'',
+  _nw={услуга_id:svcId||DB.services[0].id, lines:[], штучные:[], нормы:[], остаток:0, формула:'',
        _date:todayISO(), _noStock:false};
   loadNwLines();
   drawNewWork();
@@ -1200,6 +1561,7 @@ function loadNwLines(){
   const s=sById(_nw.услуга_id);
   _nw.цена = svcFrom(s);
   _nw.время = s.время_мин||0;
+  _nw.нормы = нормыУслуги(s);   // типовой расход подставляется сам, граммы можно поправить
 }
 /* Разбор вставленной формулы в строки расхода. */
 function parseFormula(){
@@ -1214,17 +1576,6 @@ function parseFormula(){
   toast(bad? `Распознано, уточните ${bad} ${plural(bad,'строку','строки','строк')}` : 'Формула распознана ✓');
 }
 function drawNewWork(){
-  const lineOpt=(id,candIds)=>{
-    let h='';
-    if(candIds&&candIds.length){
-      h+=candIds.map(cid=>{const c=mById(cid); return c?`<option value="${c.id}">${esc(c.название)} (${esc(c.бренд)})</option>`:'';}).join('');
-      h+=`<option value="" disabled>──────────</option>`;
-    }
-    // бренд в подписи — иначе «Оксид 6%» от разных марок не различить
-    h+=sortMats(DB.materials).map(m=>
-      `<option value="${m.id}" ${m.id===id?'selected':''}>${esc(withBrand(m.название,m.бренд))}</option>`).join('');
-    return h;
-  };
   const linesHtml=_nw.lines.map((ln,i)=>{
     const m=mById(ln.материал_id);
     const warn=!_nw._noStock && m && ln.граммы>availFor(ln.материал_id);
@@ -1240,7 +1591,7 @@ function drawNewWork(){
         <label class="fld" style="margin-bottom:0;flex:2">
           <span>${label}</span>
           <select onchange="_nw.lines[${i}].материал_id=this.value||null;_nw.lines[${i}].кандидаты=null;drawNewWork()">
-            <option value="">— выбрать —</option>${lineOpt(ln.материал_id, amb?ln.кандидаты:null)}
+            <option value="">— выбрать —</option>${matOptions(ln.материал_id, amb?ln.кандидаты:null)}
           </select></label>
         <label class="fld" style="margin-bottom:0;flex:1">
           <span>Грамм ${warn?'<span style="color:var(--red)">!</span>':''}</span>
@@ -1281,6 +1632,8 @@ function drawNewWork(){
     <label class="fld"><span>Остаток смеси (в отход), г</span>
       <input type="number" inputmode="numeric" value="${_nw.остаток}" onchange="_nw.остаток=+this.value"></label>
 
+    ${нормыБлок()}
+
     <label class="fld" style="margin-top:12px"><span>Сколько взяла с клиента, ₽${(()=>{const s=sById(_nw.услуга_id);return s&&svcTo(s)>svcFrom(s)?` <span class="xs muted">(по прайсу ${svcPriceText(s)})</span>`:'';})()}</span>
       <input id="nw_price" type="number" inputmode="numeric" value="${_nw.цена}" onchange="_nw.цена=+this.value;recalcNw()"></label>
     <label class="fld"><span>Время работы, мин (для «доход/час»)</span>
@@ -1290,6 +1643,35 @@ function drawNewWork(){
       `<button class="btn" onclick="saveWork()">💾 ${_nw._editId?'Сохранить':(_nw._noStock?'Добавить работу':'Провести работу')}</button>`]);
   recalcNw();
 }
+/* Типовой расход в форме работы. Подставился из услуги — обычно править нечего,
+   но граммы редактируются, а лишнюю строку можно убрать (мыла не мыла — бывает). */
+function нормыБлок(){
+  const список=_nw.нормы||[];
+  const итог=список.reduce((s,x)=>{const n=нById(x.id); return s+(n?нормаСумма({кол:x.кол,цена:n.цена,накидка:n.накидка}):0);},0);
+  const строки=список.map((x,i)=>{
+    const n=нById(x.id); if(!n) return '';
+    const с=нормаСумма({кол:x.кол, цена:n.цена, накидка:n.накидка});
+    const фикс=n.ед==='раб';
+    return `<div class="step-card" style="padding:9px 11px;margin-bottom:8px">
+      <div class="row" style="gap:9px">
+        <div class="grow" style="min-width:0">
+          <div class="sm ell" style="font-weight:600">${esc(n.название)}</div>
+          <div class="xs muted ell">${фикс?money(n.цена)+' за работу':money1(n.цена)+'/'+ЕД[n.ед]}${n.накидка?` · +${n.накидка}% погрешность`:''}</div>
+        </div>
+        ${фикс?'':`<input type="number" inputmode="numeric" value="${x.кол}" aria-label="${ЕД[n.ед]}"
+          style="flex:none;width:74px;padding:9px;text-align:center"
+          onchange="_nw.нормы[${i}].кол=+this.value;drawNewWork()">`}
+        <span class="mono" style="flex:none;width:62px;text-align:right">${money(с)}</span>
+        <span class="iconbtn" style="flex:none;width:28px;height:28px" onclick="_nw.нормы.splice(${i},1);drawNewWork()">✕</span>
+      </div>
+    </div>`;
+  }).join('');
+  const убрали=нормыУслуги(sById(_nw.услуга_id)).filter(x=>!список.find(o=>o.id===x.id));
+  return `<div class="section-title"><span>Типовой расход</span><span class="muted mono">${money(итог)}</span></div>
+    ${строки||'<div class="sm muted" style="margin-bottom:10px">Пусто. Задаётся в услуге: Услуги → нужная → «Изменить».</div>'}
+    ${убрали.length?`<div class="sm muted" style="margin:-2px 2px 10px">Убрано из работы: ${
+      убрали.map(x=>esc((нById(x.id)||{}).название)).join(', ')} · <span class="link" onclick="_nw.нормы=нормыУслуги(sById(_nw.услуга_id));drawNewWork()">вернуть</span></div>`:''}`;
+}
 function addNwPiece(id){
   if(_nw.штучные.find(x=>x.id===id)) return;
   _nw.штучные.push({id, кол_во:1}); drawNewWork();
@@ -1297,7 +1679,7 @@ function addNwPiece(id){
 function nwCost(){
   const шаги=_nw.lines.filter(l=>l.материал_id).map(l=>({материал_id:l.материал_id, факт_граммы:l.граммы, факт_оксида:0}));
   const штучные=_nw.штучные.map(p=>{const pp=pById(p.id);return {...p, цена_за_штуку:pp?pp.цена_за_штуку:0};});
-  return calcCost({шаги, штучные}, DB.materials);
+  return calcCost({шаги, штучные, нормы:снимокНорм(_nw.нормы)}, DB.materials);
 }
 function recalcNw(){
   const cost=nwCost();
@@ -1305,7 +1687,10 @@ function recalcNw(){
   const lvl=margLevel(marg, price);
   const el=document.getElementById('nw_summary'); if(!el)return;
   const short=_nw._noStock?0:_nw.lines.filter(l=>{const m=mById(l.материал_id); return m && l.граммы>availFor(l.материал_id);}).length;
+  const нормыС=Math.round(снимокНорм(_nw.нормы).reduce((s,n)=>s+нормаСумма(n),0));
   el.innerHTML=`
+    ${нормыС?`<div class="kv"><span class="k">Материалы по формуле</span><span class="v">${money(cost-нормыС)}</span></div>
+    <div class="kv"><span class="k">Типовой расход</span><span class="v">${money(нормыС)}</span></div>`:''}
     <div class="kv"><span class="k">Себестоимость</span><span class="v">${money(cost)}</span></div>
     <div class="kv"><span class="k">Цена (доход)</span><span class="v">${money(price)}</span></div>
     <div class="kv"><span class="k">Маржа</span><span class="v" style="color:${lvl.c}">${money(marg)} · ${price?Math.round(marg/price*100):0}%${lvl.t?' · '+lvl.t:''}</span></div>
@@ -1326,22 +1711,31 @@ function saveWork(){
     const orig=DB.works.find(x=>x.id===_nw._editId);
     if(orig){
       if(!orig.без_склада){
-        (orig.шаги||[]).forEach(st=>{ const m=mById(st.материал_id); if(m)m.остаток_г+=st.факт_граммы; });
-        (orig.штучные||[]).forEach(p=>{ const pp=pById(p.id); if(pp)pp.остаток_шт+=p.кол_во; });
+        (orig.шаги||[]).forEach(st=>{ const m=mById(st.материал_id); if(m)m.остаток_г=Math.round((m.остаток_г+спис(st))*10)/10; });
+        (orig.штучные||[]).forEach(p=>{ const pp=pById(p.id); if(pp)pp.остаток_шт+=списШт(p); });
       }
       DB.works=DB.works.filter(x=>x.id!==_nw._editId);
     }
   }
   const today=todayISO();
+  const нормы=снимокНорм(_nw.нормы);
   const w={ id:_nw._editId||uid('w'), дата:_nw._date||today, услуга_id:s.id, услуга_назв:s.название,
     шаги, остаток_смеси_г:_nw.остаток||0, время:_nw.время||0,
-    штучные, цена:_nw.цена||0, формула:_nw.формула||'', без_склада:noStock };
-  w.себестоимость=calcCost({шаги, штучные}, DB.materials);
+    штучные, нормы, цена:_nw.цена||0, формула:_nw.формула||'', без_склада:noStock };
+  w.себестоимость=calcCost({шаги, штучные, нормы}, DB.materials);
   w.маржа=w.цена-w.себестоимость;
   let zeroed=0;
   if(!noStock){
-    шаги.forEach(st=>{ const m=mById(st.материал_id); if(m){ if(st.факт_граммы>m.остаток_г) zeroed++; m.остаток_г=Math.max(0,m.остаток_г-st.факт_граммы); } });
-    штучные.forEach(p=>{ const pp=pById(p.id); if(pp)pp.остаток_шт=Math.max(0,pp.остаток_шт-p.кол_во); });
+    // Запоминаем, сколько ушло СО СКЛАДА, а не сколько просила формула: при нехватке
+    // остаток упирается в ноль. Без этого удаление работы вернуло бы полную цифру
+    // и дорисовало на склад граммы, которых там никогда не было.
+    шаги.forEach(st=>{ const m=mById(st.материал_id); if(!m){ st.списано=0; return; }
+      if(st.факт_граммы>m.остаток_г) zeroed++;
+      st.списано=Math.min(st.факт_граммы, m.остаток_г);
+      m.остаток_г=Math.round((m.остаток_г-st.списано)*10)/10; });
+    штучные.forEach(p=>{ const pp=pById(p.id); if(!pp){ p.списано=0; return; }
+      p.списано=Math.min(p.кол_во, pp.остаток_шт);
+      pp.остаток_шт-=p.списано; });
   }
   const wasEdit=!!_nw._editId;
   const былП=_wPeriod, былМ=_monthOff;   // работа задним числом иначе пропала бы из фильтра
@@ -1644,6 +2038,14 @@ function renderSettings(){
         <div class="sm muted" style="margin-top:8px">После подключения всё синхронизируется само: изменила данные → улетело на сервер; открыла на новом устройстве → подтянулось.</div>`}
     </div>`;
 
+  h+=`<div class="section-title"><span>Нормы расхода</span></div>
+    <div class="card tap" onclick="нормыSheet()" style="display:flex;align-items:center;gap:11px">
+      <span class="gico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 18.5C5.5 10.5 11.5 5.5 19 5.5c0 7.5-5.5 13-13 13a5 5 0 0 1-.5-.02Z"/><path d="M6 18C9 14.5 12.8 11.6 16.5 9.8"/></svg></span>
+      <div class="grow"><div class="title">Уход и мелочь</div>
+        <div class="sm muted">${(DB.нормы||[]).length} ${plural((DB.нормы||[]).length,'строка','строки','строк')} · средние цены</div></div>
+      <span style="color:var(--muted)">›</span></div>
+    <div class="sm muted" style="margin:2px 2px 0">Шампуни, маски, мелочь — то, что не ведётся на складе. Считается по средней цене и попадает только в маржу.</div>`;
+
   h+=`<div class="section-title"><span>Резервная копия</span></div>
     <div class="card">
       <div class="sm muted" style="margin-bottom:10px">${backupInfoText()}</div>
@@ -1663,6 +2065,66 @@ function renderSettings(){
     </div>
     <div style="height:12px"></div>`;
   return h;
+}
+
+/* ==================== СПРАВОЧНИК НОРМ ==================== */
+function нормыSheet(){
+  const rows=(DB.нормы||[]).map(n=>`<div class="card tap" onclick="editНорма('${n.id}')">
+    <div class="row between">
+      <div class="grow" style="min-width:0">
+        <div class="title ell">${esc(n.название)}${n.всем?' <span class="badge" style="padding:1px 7px">во все</span>':''}</div>
+        <div class="sm muted ell">${n.ед==='раб'?'фикс. сумма за работу':'цена за '+ЕД[n.ед]}${
+          n.накидка?` · +${n.накидка}% погрешность`:''}${n.заметка?' · '+esc(n.заметка):''}</div>
+      </div>
+      <div class="title mono" style="flex:none;padding-left:8px">${n.ед==='раб'?money(n.цена):money1(n.цена)}</div>
+    </div></div>`).join('');
+  openSheet('Нормы расхода', `
+    <div class="sm muted" style="margin-bottom:10px">Средняя цена за грамм по всем маркам: пять шампуней разных брендов — одна строка. На складе не ведутся, в Расход не попадают — только в себестоимость работы.</div>
+    ${rows||'<div class="sm muted" style="margin-bottom:8px">Пока пусто.</div>'}
+    <button class="btn soft" onclick="editНорма('')">＋ Добавить строку</button>`,
+    [`<button class="btn ghost" onclick="closeSheet()">Закрыть</button>`]);
+}
+function editНорма(id){
+  const n = id ? (нById(id)||{}) : {название:'', ед:'г', цена:'', накидка:0, всем:false, заметка:''};
+  openSheet(id?'Изменить норму':'Новая норма', `
+    <label class="fld"><span>Название</span><input id="nr_name" value="${esc(n.название||'')}" placeholder="Шампунь"></label>
+    <div class="fld-row">
+      <label class="fld"><span>Единица</span><select id="nr_ed">
+        ${Object.keys(ЕД).map(k=>`<option value="${k}" ${n.ед===k?'selected':''}>${ЕД[k]}</option>`).join('')}
+      </select></label>
+      <label class="fld"><span>Цена, ₽</span><input id="nr_price" type="number" inputmode="decimal" step="0.01" value="${n.цена===''?'':n.цена}" placeholder="1.63"></label>
+    </div>
+    <div class="sm muted" style="margin:-4px 0 12px">«г» и «шт» — цена за единицу, количество задаётся в услуге. «за работу» — фиксированная сумма, количество не спрашивается.</div>
+    <label class="fld"><span>Погрешность, %</span><input id="nr_nak" type="number" inputmode="numeric" value="${n.накидка||0}" placeholder="0"></label>
+    <div class="sm muted" style="margin:-4px 0 12px">Накидывается поверх суммы этой строки — на случай, что потратила больше.</div>
+    <label class="fld"><span>Заметка <span class="xs muted">(не обяз.)</span></span>
+      <input id="nr_note" value="${esc(n.заметка||'')}" placeholder="что входит в строку"></label>
+    <label class="chk" style="margin-bottom:6px">
+      <input id="nr_all" type="checkbox" ${n.всем?'checked':''}>
+      <span>Во все услуги<br><span class="xs muted">идёт в каждую работу, количество не спрашивается</span></span>
+    </label>`,
+    [ id?`<button class="btn danger wauto" onclick="delНорма('${id}')">🗑</button>`:`<button class="btn ghost" onclick="нормыSheet()">Назад</button>`,
+      `<button class="btn" onclick="saveНорма('${id||''}')">Сохранить</button>`]);
+}
+function saveНорма(id){
+  const g=x=>document.getElementById(x).value;
+  const name=g('nr_name').trim(); if(!name) return toast('Введите название');
+  const obj={ название:name, ед:g('nr_ed'), цена:+g('nr_price')||0, накидка:+g('nr_nak')||0,
+              заметка:g('nr_note').trim(), всем:document.getElementById('nr_all').checked };
+  if(!DB.нормы) DB.нормы=[];
+  if(id){ const i=DB.нормы.findIndex(x=>x.id===id); if(i>=0) DB.нормы[i]={...DB.нормы[i], ...obj}; }
+  else DB.нормы.push({id:uid('n'), ...obj});
+  save(); нормыSheet(); toast('Сохранено');
+}
+/* Удаление нормы чистит ссылки в услугах. Работы не трогаем: у них снимок с ценой,
+   он и должен пережить справочник — иначе поедет маржа за прошлые месяцы. */
+function delНорма(id){
+  const исп=(DB.services||[]).filter(s=>(s.нормы||[]).some(x=>x.id===id)).length;
+  confirmDo('Удалить строку из справочника?'+(исп?` Она используется в ${исп} ${plural(исп,'услуге','услугах','услугах')} — оттуда тоже уберётся. Проведённые работы не изменятся.`:''), ()=>{
+    DB.нормы=(DB.нормы||[]).filter(n=>n.id!==id);
+    (DB.services||[]).forEach(s=>{ if(s.нормы) s.нормы=s.нормы.filter(x=>x.id!==id); });
+    save(); нормыSheet(); toast('Удалено');
+  });
 }
 
 /* ==================== СИНХРОНИЗАЦИЯ С СЕРВЕРОМ ==================== */
@@ -1695,7 +2157,7 @@ async function pullSync(){
     const remote=await r.json();
     const rAt=+(remote&&remote.updatedAt)||0, lAt=+DB._updatedAt||0;
     if(remote && remote.db && rAt>lAt){
-      DB=remote.db; if(!DB.purchases)DB.purchases=[];
+      DB=remote.db; мигрируй();
       localStorage.setItem(KEY, JSON.stringify(DB));
       go(TAB); toast('Данные обновлены с сервера ✓');
     } else if(lAt>rAt){ pushSync(); }
@@ -1740,7 +2202,7 @@ async function connectSync(){
     const remote=await r.json();
     if(!remote || !remote.db || !Array.isArray(remote.db.materials)) throw new Error('на сервере не данные учёта');
     localStorage.setItem(SYNC_KEY, JSON.stringify({url,key}));
-    DB=remote.db; if(!DB.purchases)DB.purchases=[];
+    DB=remote.db; мигрируй();
     localStorage.setItem(KEY, JSON.stringify(DB));
     _sync.at=Date.now(); _sync.err=null;
     localStorage.setItem('colorist_sync_at', String(_sync.at));
@@ -1806,7 +2268,7 @@ function importBackup(input){
     const n=data.works.length, m=data.materials.length;
     confirmDo(`Восстановить данные из копии${data._экспорт?' от '+data._экспорт:''}? (${m} материалов, ${n} работ). Текущие данные будут заменены.`, ()=>{
       delete data._экспорт; delete data._приложение;
-      DB=data; if(!DB.purchases)DB.purchases=[];
+      DB=data; мигрируй();
       save(); markBackedUp(); go('stock'); toast('Данные восстановлены ✓');
     }, 'Восстановить');
   };

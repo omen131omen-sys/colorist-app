@@ -1,0 +1,17 @@
+# /etc/systemd/system/colorist-sync.service — копия с сервера 2026-10-30.
+# Настоящий ключ живёт только на сервере; здесь он заменён заглушкой — репозиторий публичный.
+[Unit]
+Description=Colorist sync server
+After=network.target
+
+[Service]
+Environment=PORT=8787
+Environment=KEY=ЗАМЕНИТЬ_НА_СЕКРЕТНЫЙ_КЛЮЧ
+Environment=DATA_DIR=/opt/colorist/data
+ExecStart=/usr/bin/node /opt/colorist/server.js
+Restart=always
+RestartSec=3
+User=root
+
+[Install]
+WantedBy=multi-user.target

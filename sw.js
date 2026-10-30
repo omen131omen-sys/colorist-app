@@ -1,6 +1,9 @@
 // Офлайн-кэш: после первого открытия приложение работает без интернета.
-const CACHE = 'colorist-v2';
-const ASSETS = ['./', './index.html', './manifest.json', './icon180.png', './icon512.png'];
+// Новый файл в приложении → добавить сюда и поднять номер кэша.
+const CACHE = 'colorist-v3';
+const JS = ['core','costing','store','parser','stock','services','works','expenses','report','settings','sync','app'];
+const ASSETS = ['./', './index.html', './css/app.css', ...JS.map(n => './js/' + n + '.js'),
+                './manifest.json', './icon180.png', './icon512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));

@@ -101,7 +101,9 @@ function editWork(id){
     // у старых работ норм нет — подставлять задним числом не будем, себестоимость уехала бы
     нормы:(w.нормы||[]).map(n=>({id:n.норма_id, кол:n.кол})),
     остаток:w.остаток_смеси_г||0, формула:w.формула||'', цена:w.цена||0, время:w.время||(sById(w.услуга_id)||{}).время_мин||0,
-    _editId:id, _date:w.дата, _noStock:!!w.без_склада, _origByMat:orig};
+    _editId:id, _date:w.дата, _noStock:!!w.без_склада, _origByMat:orig,
+    // услугу могли удалить из прайса — тогда работа сохраняется под своим прежним названием
+    _svcName:w.услуга_назв};
   drawNewWork();
 }
 function availFor(mid){ const m=mById(mid); if(!m) return 0; return m.остаток_г + (_nw&&_nw._origByMat?(_nw._origByMat[mid]||0):0); }
@@ -202,6 +204,7 @@ function drawNewWork(){
   openSheet(_nw._editId?'Изменить работу':'Расчёт работы', `
     <label class="fld"><span>Услуга (для цены и статистики)</span>
       <select onchange="_nw.услуга_id=this.value;loadNwLines();drawNewWork()">
+        ${sById(_nw.услуга_id)?'':`<option value="${_nw.услуга_id}" selected>${esc(_nw._svcName||'?')} (удалена из прайса)</option>`}
         ${DB.services.map(x=>`<option value="${x.id}" ${x.id===_nw.услуга_id?'selected':''}>${esc(x.название)}</option>`).join('')}
       </select></label>
 
@@ -294,6 +297,10 @@ function recalcNw(){
 }
 function saveWork(){
   const s=sById(_nw.услуга_id);
+  // Проверка ДО любых изменений базы: ниже правка уже возвращает граммы на склад и убирает
+  // старую работу — упади мы после этого, следующий save() записал бы потерю работы.
+  const услуга_назв = s ? s.название : _nw._svcName;
+  if(!услуга_назв) return toast('Выберите услугу');
   const noStock=!!_nw._noStock;
   const bad=_nw.lines.filter(l=>!l.материал_id).length;
   const шаги=_nw.lines.filter(l=>l.материал_id).map(l=>({название:matName(l.материал_id), материал_id:l.материал_id, факт_граммы:l.граммы, оксид_id:null, факт_оксида:0}));
@@ -313,7 +320,7 @@ function saveWork(){
   }
   const today=todayISO();
   const нормы=снимокНорм(_nw.нормы);
-  const w={ id:_nw._editId||uid('w'), дата:_nw._date||today, услуга_id:s.id, услуга_назв:s.название,
+  const w={ id:_nw._editId||uid('w'), дата:_nw._date||today, услуга_id:_nw.услуга_id, услуга_назв,
     шаги, остаток_смеси_г:_nw.остаток||0, время:_nw.время||0,
     штучные, нормы, цена:_nw.цена||0, формула:_nw.формула||'', без_склада:noStock };
   w.себестоимость=calcCost({шаги, штучные, нормы}, DB.materials);

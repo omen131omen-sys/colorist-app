@@ -2,7 +2,8 @@
 
 PWA без сборки: `index.html` + `css/app.css` + `js/*.js` (классические скрипты, общий глобальный scope).
 Документация — [docs/README.md](docs/README.md), процесс разработки — [docs/development.md](docs/development.md),
-схема данных — [docs/data-model.md](docs/data-model.md), бэклог — [docs/issues.md](docs/issues.md).
+схема данных — [docs/data-model.md](docs/data-model.md), бэклог — [docs/issues.md](docs/issues.md),
+дорожная карта — [docs/roadmap.md](docs/roadmap.md). Деловые заметки — `private/business.md` (вне git, не публиковать).
 
 ## Ветки и выкладка
 - `main` = прод: GitHub Pages публикует его мастерице на телефон. Push в `main` — только по явному «да»

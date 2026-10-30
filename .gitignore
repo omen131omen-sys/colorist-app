@@ -5,3 +5,5 @@ archive/
 # IP сервера, пользователь и путь к ssh-ключу
 server/onecommand.txt
 .playwright-mcp/
+# Деловые заметки: модель заработка, цены, переговоры — только локально
+private/

@@ -1,6 +1,6 @@
 // Офлайн-кэш: после первого открытия приложение работает без интернета.
 // Новый файл в приложении → добавить сюда и поднять номер кэша.
-const CACHE = 'colorist-v3';
+const CACHE = 'colorist-v4';
 const JS = ['core','costing','store','parser','stock','services','works','expenses','report','settings','sync','app'];
 const ASSETS = ['./', './index.html', './css/app.css', ...JS.map(n => './js/' + n + '.js'),
                 './manifest.json', './icon180.png', './icon512.png'];
@@ -19,6 +19,9 @@ self.addEventListener('activate', e => {
 // Сначала сеть (чтобы подтягивать обновления), при её отсутствии — кэш.
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  // Сервер синхронизации — другой адрес: его не кэшируем. Иначе вся база оседала в кэше,
+  // а без сети на запрос данных отдавался старый ответ или вовсе index.html.
+  if (new URL(e.request.url).origin !== self.location.origin) return;
   e.respondWith(
     fetch(e.request).then(resp => {
       const copy = resp.clone();

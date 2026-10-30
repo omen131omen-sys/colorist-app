@@ -56,7 +56,7 @@ function renderServices(){
         <div style="text-align:right; flex:none; padding-left:8px">
           <div class="title mono" style="white-space:nowrap">${svcPriceText(s)}</div>
           ${st&&st.mn?`<div class="xs" style="color:${margLevel(st.marg,st.mRev).c}">маржа ${st.margPct}%</div>`
-              :(s.время_мин?'':`<div class="xs muted">${s.время_мин||0} мин</div>`)}
+              :''}
         </div>
       </div>
     </div>`;

@@ -1,7 +1,7 @@
 :root{
   /* Палитра «Нюд-мокко» — тёплый бьюти-минимал */
   --bg:#f5f0ec; --card:#fffdfb; --ink:#2a231f; --muted:#93867d;
-  --line:#e9e0d8; --brand:#a9857b; --brand-soft:#efe5df;
+  --line:#e9e0d8; --brand:#a9857b; --brand-soft:#efe5df; --brand-line:#e3d3c9;
   --green:#5b8a5b; --green-soft:#e8f0e6; --red:#c46a5f; --red-soft:#f7e6e2;
   --amber:#c08a4a; --amber-soft:#f6ebdb; --blue:#7e8a9c;
   --shadow:0 1px 2px rgba(60,45,35,.05),0 6px 22px rgba(60,45,35,.06);
@@ -40,7 +40,7 @@ body{
 }
 
 /* Header */
-header.top{position:sticky; top:0; z-index:20; background:rgba(244,244,247,.86);
+header.top{position:sticky; top:0; z-index:20; background:rgba(245,240,236,.86);
   backdrop-filter:saturate(180%) blur(12px); padding:14px 16px 10px;
   border-bottom:1px solid var(--line);}
 header.top h1{margin:0; font-family:var(--font-display); font-size:27px; font-weight:600;
@@ -110,7 +110,7 @@ main{padding:14px 16px 8px}
 .badge.g{background:var(--green-soft); color:var(--green)}
 .badge.r{background:var(--red-soft); color:var(--red)}
 .badge.a{background:var(--amber-soft); color:var(--amber)}
-.badge.n{background:#eef0f4; color:#5b5966}
+.badge.n{background:#efe9e4; color:#6f645c}
 
 .title{font-family:var(--font-display); font-weight:600; font-size:18px; letter-spacing:.01em}
 .muted{color:var(--muted)}
@@ -120,7 +120,7 @@ main{padding:14px 16px 8px}
 .mono{font-family:var(--font-ui); font-variant-numeric:tabular-nums; font-weight:800; letter-spacing:-.01em}
 
 /* Progress bar */
-.bar{height:7px; background:#edecf2; border-radius:999px; overflow:hidden; margin-top:9px}
+.bar{height:7px; background:var(--line); border-radius:999px; overflow:hidden; margin-top:9px}
 .bar > i{display:block; height:100%; border-radius:999px; background:var(--brand); transition:width .3s}
 .bar.low > i{background:var(--red)}
 .bar.warn > i{background:var(--amber)}
@@ -164,7 +164,7 @@ nav.tabbar .ico svg{width:24px; height:24px; display:block}
 .empty .em{font-size:40px; margin-bottom:8px}
 
 /* Sheet / modal */
-.sheet-bg{position:fixed; inset:0; background:rgba(20,18,30,.42); z-index:40;
+.sheet-bg{position:fixed; inset:0; background:rgba(42,35,31,.42); z-index:40;
   opacity:0; pointer-events:none; transition:opacity .22s;
   display:flex; flex-direction:column; justify-content:flex-end}
 .sheet-bg.open{opacity:1; pointer-events:auto}
@@ -177,7 +177,7 @@ nav.tabbar .ico svg{width:24px; height:24px; display:block}
 @media(min-width:800px){ .sheet{max-width:560px; border-radius:22px; max-height:88vh;
   transform:translateY(24px) scale(.98); opacity:0; transition:transform .25s, opacity .25s}
   .sheet-bg.open .sheet{transform:none; opacity:1} }
-.sheet .grab{width:38px;height:5px;border-radius:999px;background:#d7d5de;margin:10px auto 2px}
+.sheet .grab{width:38px;height:5px;border-radius:999px;background:#ddd2c9;margin:10px auto 2px}
 .sheet-head{display:flex; align-items:center; justify-content:space-between; padding:8px 16px 10px}
 .sheet-head h2{margin:0; font-size:18px; font-weight:800; letter-spacing:-.01em}
 .sheet-body{flex:1 1 auto; min-height:0; overflow-y:auto; padding:4px 16px 20px; -webkit-overflow-scrolling:touch}
@@ -192,7 +192,7 @@ input,select,textarea{width:100%; font-family:inherit; font-size:16px; padding:1
   border:1px solid var(--line); border-radius:11px; background:var(--card); color:var(--ink);
   -webkit-appearance:none; appearance:none}
 input:focus,select,textarea:focus{outline:2px solid var(--brand-soft); border-color:var(--brand)}
-select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2378767f' stroke-width='2'><path d='M4 6l4 4 4-4'/></svg>");
+select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2393867d' stroke-width='2'><path d='M4 6l4 4 4-4'/></svg>");
   background-repeat:no-repeat; background-position:right 12px center; padding-right:34px}
 .fld-row{display:flex; gap:10px}
 .fld-row > *{flex:1}
@@ -203,7 +203,7 @@ label.chk input[type=checkbox]:checked{background:var(--brand); border-color:var
 label.chk input[type=checkbox]:checked::after{content:''; position:absolute; left:8px; top:3px;
   width:5px; height:11px; border:solid #fff; border-width:0 2px 2px 0; transform:rotate(45deg)}
 label.chk > span{font-size:13.5px; font-weight:600; color:var(--ink); line-height:1.2}
-.seg{display:flex; gap:6px; background:#ececf1; padding:4px; border-radius:12px}
+.seg{display:flex; gap:6px; background:#efe8e2; padding:4px; border-radius:12px}
 .seg button{flex:1; border:none; background:none; padding:9px 4px; border-radius:9px;
   font-weight:700; font-size:13px; color:var(--muted); cursor:pointer}
 .seg button.on{background:var(--card); color:var(--brand); box-shadow:var(--shadow)}
@@ -216,10 +216,10 @@ label.chk > span{font-size:13.5px; font-weight:600; color:var(--ink); line-heigh
 .step-card{background:var(--card); border:1px solid var(--line); border-radius:13px;
   padding:11px; margin-bottom:9px}
 .toast{position:fixed; bottom:96px; left:50%; transform:translateX(-50%) translateY(20px);
-  background:#1c1b22; color:#fff; padding:11px 18px; border-radius:12px; font-size:13.5px;
+  background:var(--ink); color:#fff; padding:11px 18px; border-radius:12px; font-size:13.5px;
   font-weight:600; z-index:60; opacity:0; transition:.25s; pointer-events:none; box-shadow:var(--shadow)}
 .toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
-.confirm-bg{position:fixed; inset:0; background:rgba(20,18,30,.5); z-index:70;
+.confirm-bg{position:fixed; inset:0; background:rgba(42,35,31,.5); z-index:70;
   display:flex; align-items:center; justify-content:center; padding:24px;
   opacity:0; pointer-events:none; transition:opacity .18s}
 .confirm-bg.open{opacity:1; pointer-events:auto}

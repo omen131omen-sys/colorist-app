@@ -75,7 +75,7 @@ function workSheet(id){
     }</span><span class="v">${money(нормаСумма(n))}</span></div>`).join('');
   openSheet(esc(w.услуга_назв), `
     <div class="sm muted" style="margin-bottom:10px">${fmtDate(w.дата)} · ${esc(w.услуга_назв)}</div>
-    ${w.формула?`<div class="card" style="background:var(--brand-soft);border-color:#e0d6ff"><div class="xs" style="color:var(--brand);font-weight:700;margin-bottom:4px">ФОРМУЛА ИЗ DIKIDI</div><div class="sm mono">${esc(w.формула)}</div></div>`:''}
+    ${w.формула?`<div class="card" style="background:var(--brand-soft);border-color:var(--brand-line)"><div class="xs" style="color:var(--brand);font-weight:700;margin-bottom:4px">ФОРМУЛА ИЗ DIKIDI</div><div class="sm mono">${esc(w.формула)}</div></div>`:''}
     ${steps}
     ${pieces?`<div class="card">${pieces}</div>`:''}
     ${нормы?`<div class="section-title"><span>Типовой расход</span></div><div class="card">${нормы}</div>`:''}
@@ -218,7 +218,7 @@ function drawNewWork(){
     </div>
     ${_nw._noStock?`<div class="sm" style="color:var(--brand);margin:-4px 2px 10px">📌 Прошлая работа: остатки склада не трогаем. Строки расхода можно не заполнять — себестоимость посчитается по тем, что укажешь (иначе 0).</div>`:''}
 
-    <div class="card" style="background:var(--brand-soft);border-color:#e0d6ff">
+    <div class="card" style="background:var(--brand-soft);border-color:var(--brand-line)">
       <div class="xs" style="color:var(--brand);font-weight:700;margin-bottom:6px">ФОРМУЛА ИЗ DIKIDI</div>
       <textarea id="nw_formula" rows="2" placeholder="10.2 (20гр) + 9.23 (5гр) + 1,5% (60гр)" style="resize:vertical" onchange="_nw.формула=this.value">${esc(_nw.формула||'')}</textarea>
       <button class="btn sm" style="margin-top:8px" onclick="parseFormula()">🔎 Разобрать формулу</button>

@@ -387,7 +387,7 @@ function drawIncoming(){
   const готово=rows.filter(incReady).length;
   openSheet('Приход списком', `
     <div class="sm muted" style="margin-bottom:10px">Вставь список покупок — по строке на позицию. Что понятно, подставится само; останется сверить граммы и цены.</div>
-    <div class="card" style="background:var(--brand-soft);border-color:#e0d6ff">
+    <div class="card" style="background:var(--brand-soft);border-color:var(--brand-line)">
       <div class="xs" style="color:var(--brand);font-weight:700;margin-bottom:6px">СПИСОК ПОКУПОК</div>
       <textarea id="inc_text" rows="4" style="resize:vertical" onchange="_inc.text=this.value"
         placeholder="Lumia 6.2 — 2 шт — 1240&#10;Оксид 6% 1 уп 450&#10;пудра х2 1800">${esc(_inc.text||'')}</textarea>

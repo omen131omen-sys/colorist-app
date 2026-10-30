@@ -3,8 +3,8 @@
    Подробно: docs/workshops/settings.md */
 
 function resetData(){
-  confirmDo('Удалить все данные и загрузить тестовые заново?', ()=>{
-    DB=seed(); syncReplaceNext(); save(); go('stock'); toast('Данные сброшены'); }, 'Сбросить');
+  confirmDo('Удалить ВСЕ данные учёта?'+(syncCfg()?' На сервере они тоже будут стёрты.':'')+' Отменить нельзя — только восстановить из копии.', ()=>{
+    DB=seed(); syncReplaceNext(); save(); go('stock'); toast('Все данные удалены'); }, 'Удалить всё');
 }
 
 /* ==================== НАСТРОЙКИ ==================== */
@@ -55,8 +55,8 @@ function renderSettings(){
 
   h+=`<div class="section-title"><span>Опасная зона</span></div>
     <div class="card">
-      <button class="btn danger" onclick="resetData()">↺ Сбросить к тестовым данным</button>
-      <div class="sm muted" style="margin-top:8px">Удалит весь текущий учёт и загрузит демо-данные заново. Если подключён сервер — сначала сделай копию.</div>
+      <button class="btn danger" onclick="resetData()">🗑 Удалить все данные</button>
+      <div class="sm muted" style="margin-top:8px">Начать учёт с чистого листа. Если подключён сервер — данные сотрутся и там. Сначала сделай копию.</div>
     </div>
     <div style="height:12px"></div>`;
   return h;

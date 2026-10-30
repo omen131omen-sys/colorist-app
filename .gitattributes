@@ -1,0 +1,4 @@
+# Переводы строк в репозитории — LF на любой машине
+* text=auto eol=lf
+*.png binary
+*.xlsx binary

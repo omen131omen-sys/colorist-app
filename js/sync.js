@@ -141,7 +141,7 @@ async function connectSync(){
   toast('Проверяю связь…');
   localStorage.removeItem(SYNC_FORCE_KEY); localStorage.removeItem(SYNC_BASE_KEY);   // новое подключение — с чистого листа
   // При подключении сервер — источник истины: если там есть данные, берём их
-  // (иначе свежеустановленное приложение затёрло бы учёт своим тестовым сидом).
+  // (иначе свежеустановленное приложение затёрло бы учёт своей пустой базой).
   try{
     const r=await fetch(url+'/data', {headers:{'X-Key':key}});
     if(r.status===401) throw new Error('неверный ключ');
@@ -179,11 +179,6 @@ function backupInfoText(){
   if(days===0) return '✅ Последняя копия — сегодня.';
   if(days<=7) return `Последняя копия — ${days} ${plural(days,'день','дня','дней')} назад.`;
   return `⚠️ Последняя копия — ${days} ${plural(days,'день','дня','дней')} назад. Пора обновить.`;
-}
-function backupStale(){
-  const t=localStorage.getItem(BK_KEY);
-  if(!t) return DB.works.length>0;
-  return (Date.now()-+t)/86400000 > 7;
 }
 function backupBlob(){
   const data={...DB, _экспорт:todayISO(), _приложение:'colorist-app'};

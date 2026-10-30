@@ -5,11 +5,7 @@
    Подробно: docs/workshops/core.md */
 
 /* ==================== КОНСТАНТЫ ==================== */
-const LEN = {plecho:'До плеч', lopatki:'До лопаток', poyasnitsa:'До поясницы'};
-const DEN = {tonkie:'Тонкие', srednie:'Средние', gustye:'Густые'};
-const LEN_K = Object.keys(LEN), DEN_K = Object.keys(DEN);
 const TYPE = {краска:'Краска', оксид:'Оксид / активатор', пудра:'Порошок', смывка:'Смывка', уход:'Уход'};
-const TYPE_BADGE = {краска:'', оксид:'n', пудра:'a', смывка:'a', уход:'g'};
 const money = v => Math.round(v).toLocaleString('ru-RU') + ' ₽';
 const money1 = v => (Math.round(v*10)/10).toLocaleString('ru-RU') + ' ₽';
 const uid = p => p + Math.random().toString(36).slice(2,8);
@@ -110,8 +106,6 @@ function fmtDateFull(iso){
   const s=d.getDate()+' '+M[d.getMonth()]+', '+wd;
   return d.getFullYear()!==today.getFullYear() ? s+' '+d.getFullYear() : s;
 }
-function deepc(o){ return JSON.parse(JSON.stringify(o)); }
-function blankMatrix(val){ const o={}; LEN_K.forEach(l=>{o[l]={}; DEN_K.forEach(d=>{o[l][d]=deepc(val);});}); return o; }
 function emptyBox(em,t,s){ return `<div class="empty"><div class="em">${em}</div><div class="title">${t}</div><div class="sm">${s}</div></div>`; }
 
 /* Sheet */

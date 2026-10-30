@@ -26,6 +26,7 @@ js/                 код, разбитый на цеха (порядок по�
 sw.js               service worker: офлайн-кэш
 manifest.json       манифест PWA (иконки, название)
 icon180/512.png     иконки
+tests/              автотесты логики (node --test), см. development.md
 server/             развёртывание серверной части (nginx + certbot), см. workshops/server.md
 data/backups/       выгрузки базы (JSON-копии из приложения)
 data/sheets/        исходные Excel-таблицы склада
@@ -37,6 +38,7 @@ docs/               эта документация
 
 | Документ | О чём |
 |---|---|
+| [development.md](development.md) | **Как вести разработку:** ветки, выпуск версии, тесты, откат |
 | [architecture.md](architecture.md) | Как устроено приложение: рендер, состояние, поток данных, порядок скриптов |
 | [data-model.md](data-model.md) | Полная схема базы `DB`: все сущности, поля, миграции |
 | [issues.md](issues.md) | Найденные баги, риски и идеи улучшений (бэклог) |
@@ -65,9 +67,10 @@ python -m http.server 8793
 
 Открыть `http://127.0.0.1:8793/`. Данные: ⚙️ → «Восстановить из копии» → файл из `data/backups/`.
 
-## Чек-лист выкладки
+Тесты: `node --test`.
 
-1. Поднять `APP_BUILD` в [js/store.js](../js/store.js) — по нему в Настройках видно, что обновление долетело до телефона.
-2. Добавили новый файл (js/css/картинку) → вписать его в `ASSETS` в [sw.js](../sw.js) и поднять `CACHE`.
-3. Залить на хостинг: `index.html`, `css/`, `js/`, `sw.js`, `manifest.json`, иконки.
-   **Не выкладывать** `data/`, `archive/`, `server/`, `docs/` — там реальные данные клиентов и доступ к серверу.
+## Выкладка
+
+Сайт — GitHub Pages из ветки `main` репозитория `omen131omen-sys/colorist-app`: push в `main` =
+обновление у мастерицы на телефоне. Порядок выпуска, ветка `dev` и откат — в [development.md](development.md).
+Данные клиентов (`data/`) и доступ к серверу (`server/onecommand.txt`) в git не попадают (`.gitignore`).

@@ -1,0 +1,33 @@
+<div class="stage">
+  <div class="phone" id="phone">
+    <div class="bg"><i></i><i></i><i></i><i></i></div>
+    <div class="screen" id="screen"></div>
+    <nav class="tabbar" id="tabbar"></nav>
+
+    <div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()">
+      <div class="sheet" id="sheet">
+        <div class="grab"></div>
+        <div class="sheet-head"><h2 id="sheetTitle"></h2><button class="xbtn" onclick="closeSheet()" aria-label="Закрыть">✕</button></div>
+        <div class="sheet-body" id="sheetBody"></div>
+        <div class="sheet-foot" id="sheetFoot"></div>
+      </div>
+    </div>
+
+    <div class="radial" id="radial" onclick="if(event.target===this)закрытьМеню()">
+      <div class="wheel" id="wheel"></div>
+      <div class="rhint">Быстрое меню.<br>Выбери, куда перейти, или нажми центр, чтобы закрыть.</div>
+    </div>
+
+    <div class="confirm-bg" id="confirmBg" onclick="if(event.target===this)closeConfirm()">
+      <div class="confirm">
+        <div class="confirm-msg" id="confirmMsg"></div>
+        <div class="confirm-btns">
+          <button class="btn ghost" onclick="closeConfirm()">Отмена</button>
+          <button class="btn danger" id="confirmYes" onclick="doConfirm()">Удалить</button>
+        </div>
+      </div>
+    </div>
+    <div class="toast" id="toast"></div>
+    <div id="fabWrap"></div>
+  </div>
+</div>

@@ -7,3 +7,5 @@ server/onecommand.txt
 .playwright-mcp/
 # Деловые заметки: модель заработка, цены, переговоры — только локально
 private/
+# Сборка демо (node demo/build.js) — пересобирается из кода
+demo/dist/

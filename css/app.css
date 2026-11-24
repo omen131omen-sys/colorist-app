@@ -62,7 +62,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .stage{min-height:100%;display:flex;align-items:center;justify-content:center;padding:32px 16px}
 .phone{position:relative;width:390px;height:820px;border-radius:52px;overflow:hidden;flex:none;
   box-shadow:0 0 0 10px #1c1613,0 0 0 11px #3a302a,0 40px 80px rgba(40,25,15,.35)}
-.bg{position:absolute;inset:-40px;background:var(--strand-base);overflow:hidden}
+.bg{position:absolute;inset:-40px;background:var(--strand-base);overflow:hidden;isolation:isolate}   /* слои фона — только внутри фона, не поверх экрана */
 .bgtop{display:none}
 .bg i{position:absolute;border-radius:50%;filter:blur(50px);opacity:.9;animation:drift 22s ease-in-out infinite alternate}
 .bg i:nth-child(1){width:340px;height:520px;left:-60px;top:40px;background:var(--strand-1);transform:rotate(18deg)}
@@ -467,10 +467,11 @@ label.chk > span{font-size:14px;font-weight:600;line-height:1.25}
   .edge .bgtop{display:block;position:absolute;left:0;right:0;top:0;height:calc(var(--safe-top) + 20px);overflow:hidden;z-index:3;pointer-events:none;
     -webkit-mask-image:linear-gradient(#000 calc(100% - 20px),transparent);mask-image:linear-gradient(#000 calc(100% - 20px),transparent)}
   .edge .bgtop .bg{inset:-40px -40px auto;height:420px}
-  /* высота страницы у iOS тут короче экрана — приложение тянем на всю высоту экрана (--app-h из app.js) */
-  .short .phone{position:fixed;top:0;left:0;right:0;height:var(--app-h)}
-  /* Старая установка: iOS рисует свою полосу цветом theme-color (= --ground); список у края
-     плавно уходит в тот же цвет — без «чёлки» с резким краем. */
+  /* Обычная строка состояния: iOS красит её в theme-color (= --ground). Фон у верхнего края
+     начинается тем же цветом и плавно уходит в пряди — строка с часами читается как верх фона,
+     а не отдельная полоса. Поверх списка — короткий переход: уехавшее вверх растворяется. */
+  html:not(.edge) .bg::before{content:"";position:absolute;left:0;right:0;top:0;height:150px;z-index:1;
+    background:linear-gradient(var(--ground) 40px,rgba(214,203,193,.75) 70px,rgba(214,203,193,0))}
   html:not(.edge) .phone::before{content:"";position:absolute;left:0;right:0;top:0;height:26px;z-index:4;pointer-events:none;
     background:linear-gradient(var(--ground) 0,rgba(214,203,193,.8) 8px,rgba(214,203,193,0) 100%)}
   .toast{top:calc(18px + var(--safe-top))}

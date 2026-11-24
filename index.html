@@ -10,7 +10,9 @@
 <link rel="icon" href="icon180.png?v=3">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<!-- Обычная строка состояния цветом theme-color. black-translucent (фон под часами) в iOS 26
+     ломает низ: снизу пустая полоса в высоту строки, обхода нет (WebKit 237961) — проверено 24.11. -->
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Учёт">
 <title>Колорист · Учёт расходников</title>
 <link rel="preload" href="fonts/manrope-cyrillic.woff2" as="font" type="font/woff2" crossorigin>

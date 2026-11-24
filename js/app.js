@@ -590,34 +590,21 @@ function открытьМеню(){ closeSheet(); document.getElementById('radial
 function закрытьМеню(){ document.getElementById('radial').classList.remove('open'); }
 
 /* ==================== ЗАПУСК ==================== */
-// Приложение на экране «Домой» рисуется под строкой состояния (index.html: black-translucent).
-// Если iOS это применила, сверху есть отступ под часы (.edge). Если нет (иконку добавили до
-// этой настройки) — полоса своя, её прячет переход у верхнего края.
+// Строка состояния — обычная (index.html). Иконки, добавленные на экран «Домой» при сборках 28–31,
+// iOS запомнил с black-translucent: там страница заходит под часы — есть отступ сверху (.edge),
+// и уехавший список прячет копия фона (.bgtop). После переустановки иконки класса не будет.
 function отступСверху(){
   const p=document.createElement('div');
   p.style.cssText='position:absolute;top:0;height:env(safe-area-inset-top,0px);visibility:hidden';
   document.body.appendChild(p); const h=p.getBoundingClientRect().height; p.remove();
   return h;
 }
-// iOS в этом режиме рисует страницу с самого верха экрана, а высоту считает без строки
-// состояния — снизу оставалась полоса голого фона. С экрана «Домой» приложение и так во весь
-// экран, поэтому если страница ниже экрана — тянем её ровно на высоту экрана (.short).
-function подогнатьКрая(){
-  const html=document.documentElement, верх=отступСверху();
-  const сЭкранаДомой = navigator.standalone || matchMedia('(display-mode: standalone)').matches;
-  const экран = innerWidth<innerHeight ? Math.max(screen.width,screen.height) : Math.min(screen.width,screen.height);
-  const коротко = верх>0 && сЭкранаДомой && html.clientHeight < экран-1;
-  html.classList.toggle('edge', верх>0);
-  html.classList.toggle('short', коротко);
-  html.style.setProperty('--app-h', коротко ? экран+'px' : '100%');
-}
+function подогнатьКрая(){ document.documentElement.classList.toggle('edge', отступСверху()>0); }
 подогнатьКрая();
-// Отступ под часы iOS сообщает не сразу: в момент запуска он бывал 0 (сборка 30 из-за этого
-// не растянулась) — проверяем ещё раз после загрузки, при повороте и при возврате в приложение.
+// отступ под часы iOS сообщает не сразу (при запуске бывает 0) — проверяем ещё раз позже
 addEventListener('load', подогнатьКрая); addEventListener('resize', подогнатьКрая); addEventListener('pageshow', подогнатьКрая);
 document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) подогнатьКрая(); });
 [150, 600, 1500].forEach(t=>setTimeout(подогнатьКрая, t));
-addEventListener('touchstart', подогнатьКрая, {once:true, passive:true});
 // Размеры экрана — по нажатию на «Сборка …» в Настройках: если вёрстка на телефоне снова
 // разойдётся с экраном, хватит одного скриншота.
 function размерыЭкрана(){

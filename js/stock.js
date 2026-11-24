@@ -177,7 +177,6 @@ function pieceSheet(id){
 function restockMat(id){
   const m = mById(id);
   openSheet('Приход · '+esc(m.название), `
-    <div class="sm muted" style="margin-bottom:12px">Купили такую же упаковку — укажите сколько и за сколько. Граммы и деньги учтутся сами, взвешивать не нужно. 1 упаковка = ${fmtG(m.нетто_г)} г.</div>
     <div class="fld-row">
       <label class="fld"><span>Сколько упаковок</span>
         <input id="rq" type="number" inputmode="numeric" value="1" step="0.5"
@@ -185,20 +184,17 @@ function restockMat(id){
       <label class="fld"><span>Сумма покупки, ₽</span>
         <input id="rs" type="number" inputmode="numeric" value="${m.цена_упаковки}"></label>
     </div>
-    <div class="sm muted" style="margin:-4px 0 10px">Если цена изменилась — просто исправьте сумму, новая цена запомнится.</div>
     <div class="fld-row" style="align-items:flex-end">
       <label class="fld" style="flex:1"><span>Дата покупки</span>
         <input id="rd" type="date" value="${todayISO()}"></label>
       <label class="chk" style="flex:1;margin-bottom:12px">
         <input id="rx" type="checkbox" checked>
-        <span>В расход<br><span class="xs muted">записать трату</span></span>
+        <span>В расход</span>
       </label>
     </div>
-    <div class="sm muted" style="margin:-4px 0 10px">Купила в августе — поставь ту дату, трата ляжет в август. Сними галочку, если эта покупка уже посчитана.</div>
     <div class="divider"></div>
-    <label class="fld"><span>…или поправить граммы без денег (початая тара, ошиблись в приходе)</span>
-      <input id="rg" type="number" inputmode="text" placeholder="напр. 50 или −61"></label>
-    <div class="sm muted" style="margin:-6px 0 8px">Плюс добавит, минус уберёт. Расход при этом не меняется.</div>
+    <label class="fld"><span>…или поправить граммы без денег</span>
+      <input id="rg" type="number" inputmode="text" placeholder="50 или −61"></label>
     <div class="sm muted">Текущий остаток: ${fmtG(m.остаток_г)} г</div>`,
     [`<button class="btn ghost" onclick="closeSheet()">Отмена</button>`,
      `<button class="btn" onclick="doRestockMat('${id}')">Добавить</button>`]);
@@ -239,7 +235,7 @@ function restockPiece(id){
       <label class="fld"><span>Сумма покупки, ₽</span>
         <input id="rs" type="number" inputmode="numeric" value="${Math.round(p.кол_во*p.цена_за_штуку)}"></label>
     </div>
-    <div class="sm muted">Текущий остаток: ${p.остаток_шт} шт. Если цена изменилась — исправьте сумму.</div>`,
+    <div class="sm muted">Текущий остаток: ${p.остаток_шт} шт</div>`,
     [`<button class="btn ghost" onclick="closeSheet()">Отмена</button>`,
      `<button class="btn" onclick="doRestockPiece('${id}')">Добавить</button>`]);
 }
@@ -374,7 +370,6 @@ function drawIncoming(){
   const rows=_inc.rows;
   const готово=rows.filter(incReady).length;
   openSheet('Приход списком', `
-    <div class="sm muted" style="margin-bottom:10px">Вставь список покупок — по строке на позицию. Что понятно, подставится само; останется сверить граммы и цены.</div>
     <div class="card" style="background:var(--brand-soft);border-color:var(--brand-line)">
       <div class="xs" style="color:var(--brand);font-weight:700;margin-bottom:6px">СПИСОК ПОКУПОК</div>
       <textarea id="inc_text" rows="4" style="resize:vertical" onchange="_inc.text=this.value"
@@ -392,12 +387,11 @@ function drawIncoming(){
           <input type="date" value="${_inc.дата}" onchange="_inc.дата=this.value"></label>
         <label class="chk" style="flex:1;margin-bottom:12px">
           <input type="checkbox" ${_inc.вРасход?'checked':''} onchange="_inc.вРасход=this.checked">
-          <span>В расход<br><span class="xs muted">записать траты</span></span>
+          <span>В расход</span>
         </label>
       </div>
-      <div class="sm muted" style="margin:-4px 0 10px">Дата одна на всю накладную: купила в августе — поставь ту, траты лягут в август.</div>
       <div class="card" id="inc_sum">${incSumHtml()}</div>`
-    :`<div class="sm muted" style="margin:2px 2px 10px">Позиции, которой нет на складе, парсер не найдёт — заведи её через ＋ и нажми «Разобрать» ещё раз. Список никуда не денется.</div>`}
+    :''}
   `, rows.length
     ? [`<button class="btn ghost" onclick="closeSheet()">Отмена</button>`,
        `<button class="btn" onclick="doIncoming()">📥 Провести приход</button>`]
@@ -462,7 +456,6 @@ function matKind(k, m){
         <label class="fld"><span>Грамм в упаковке</span><input id="f_net" type="number" inputmode="numeric" value="${m?m.нетто_г:''}" placeholder="100"></label>
         <label class="fld"><span>Пустая тара, г</span><input id="f_tare" type="number" inputmode="numeric" value="${m&&m.тара_г?m.тара_г:''}" placeholder="—"></label>
       </div>
-      <div class="sm muted" style="margin:-4px 0 12px">Цена за грамм = цена ÷ грамм в упаковке. Граммы прикидываются из мл (краска ≈ 0,93 г/мл — по замеру: тюбик 108 г − тара 15 г = 93 г на 100 мл). Взвесила точнее — впиши своё. Тара — только для сверки остатка на весах.</div>
       <div class="fld-row">
         <label class="fld"><span>Остаток, г</span><input id="f_rest" type="number" inputmode="numeric" value="${m?m.остаток_г:''}" placeholder="84"></label>
         <label class="fld"><span>Мин. остаток, г</span><input id="f_min" type="number" inputmode="numeric" value="${m?m.мин_остаток_г:30}" placeholder="30"></label>

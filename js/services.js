@@ -93,10 +93,10 @@ function svcSheet(id){
       <div class="kv"><span class="k">Всего выручки</span><span class="v">${money(st.rev)}</span></div>
       ${st.mn?`<div class="kv"><span class="k">Материалы съели</span><span class="v">${money(st.cost)}</span></div>
       <div class="kv"><span class="k">Заработано чистыми</span><span class="v" style="color:${margLevel(st.marg,st.mRev).c}">${money(st.marg)} · ${st.margPct}%</span></div>
-      ${st.mn<st.n?`<div class="sm muted" style="padding-top:8px">Маржа — по ${st.mn} ${plural(st.mn,'работе','работам','работам')} с ${fmtDay(MARG_FROM)}; по остальным материалы не заносились.</div>`:''}`
-      :`<div class="sm muted" style="padding-top:8px">Маржа появится с ${fmtDay(MARG_FROM)} — по прошлым работам материалы не заносились.</div>`}
+      ${st.mn<st.n?`<div class="sm muted" style="padding-top:8px">Маржа — по ${st.mn} ${plural(st.mn,'работе','работам','работам')} с ${fmtDay(MARG_FROM)}</div>`:''}`
+      :`<div class="sm muted" style="padding-top:8px">Маржа считается с ${fmtDay(MARG_FROM)}</div>`}
     </div>`
-    :`<div class="sm muted" style="margin:2px 2px 12px">Работ по этой услуге ещё не было — как проведёшь первую, тут появится реальный средний чек и маржа.</div>`}
+    :`<div class="sm muted" style="margin:2px 2px 12px">Работ ещё не было</div>`}
     <button class="btn" onclick="closeSheet();newWork('${id}')">▶️ Провести работу</button>`,
     [`<button class="btn danger wauto" onclick="delService('${id}')">🗑</button>`,
      `<button class="btn ghost" onclick="editService('${id}')">✏️ Изменить</button>`]);
@@ -119,12 +119,11 @@ function drawSeНормы(){
   const общие=(DB.нормы||[]).filter(n=>n.всем);
   let итог=свои.reduce((s,n)=>s+нормаСумма({кол:seНормыКол(n.id), цена:n.цена, накидка:n.накидка}),0);
   if(!_seБезОбщих) итог+=общие.reduce((s,n)=>s+нормаСумма({кол:1, цена:n.цена, накидка:n.накидка}),0);
-  box.innerHTML = (свои.length?svoiHtml(свои):'<div class="sm muted">Справочник норм пуст: ⚙️ Настройки → «Нормы расхода».</div>')
+  box.innerHTML = (свои.length?svoiHtml(свои):'<div class="sm muted">Справочник норм пуст</div>')
     + (общие.length?`<div class="divider"></div>
       <label class="chk" style="margin-bottom:6px">
         <input type="checkbox" ${_seБезОбщих?'':'checked'} onchange="_seБезОбщих=!this.checked;drawSeНормы()">
-        <span>${общие.map(n=>esc(n.название)+' — '+money(нормаСумма({кол:1,цена:n.цена,накидка:n.накидка}))).join(', ')}
-        <br><span class="xs muted">общая строка, идёт во все услуги</span></span>
+        <span>${общие.map(n=>esc(n.название)+' — '+money(нормаСумма({кол:1,цена:n.цена,накидка:n.накидка}))).join(', ')}</span>
       </label>`:'');
   const t=document.getElementById('seНормыИтог'); if(t) t.textContent=money(итог);
 }
@@ -163,10 +162,8 @@ function editService(id){
     </div>
     <label class="fld"><span>Примечание <span class="xs muted">(не обяз.)</span></span>
       <input id="se_note" value="${esc(s.заметка||'')}" placeholder="доплата за густоту/длину до 5000 ₽"></label>
-    <div class="sm muted" style="margin-top:-4px">Это прайс-лист: цена ориентировочная. «До» заполняй, если цена или время плавают — покажется вилкой. Точную сумму впишешь, когда будешь проводить работу.</div>
     <div class="section-title"><span>Типовой расход</span><span class="muted mono" id="seНормыИтог"></span></div>
     <div class="card" id="seНормы"></div>
-    <div class="sm muted" style="margin:-4px 2px 0">Сколько уходит на клиента по этой услуге. Подставится само при проведении работы и ляжет в себестоимость. На складе не списывается и в Расход не попадает — деньги учитываются, когда покупаешь.</div>
   `, [`<button class="btn ghost" onclick="closeSheet()">Отмена</button>`,
       `<button class="btn" onclick="saveService('${id||''}','${s.id}')">Сохранить</button>`]);
   drawSeНормы();

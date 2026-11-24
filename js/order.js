@@ -100,9 +100,7 @@ function orderSheet(){
       ${строки}${кнопка}</div>`;
   }).join('');
   openSheet('Заказать', `
-    <div class="sm muted" style="margin-bottom:10px">«Мало» уже в заказе, «на исходе» — добавь галочкой. Сколько упаковок — кнопками минус и плюс.</div>
-    ${тело}
-    ${(DB.поставщики||[]).length?'':`<div class="sm muted">Заведи поставщика — и заказ уйдёт ему в Telegram или WhatsApp одним нажатием. Поставщики — в Настройках.</div>`}`,
+    ${тело}`,
     [`<button class="btn ghost" onclick="_зак=null;closeSheet()">Закрыть</button>`,
      `<button class="btn soft" onclick="копироватьЗаказ()">Скопировать</button>`]);
 }
@@ -126,7 +124,7 @@ function отправитьЗаказ(gi){
   if(url){ toast('Открываю '+(КАНАЛЫ[p.канал]||'чат')+' — заказ уже набран'); setTimeout(()=>{ location.href=url; }, 350); return; }
   if(p.канал!=='share') return toast('У поставщика не указан контакт — открой его в Настройках');
   if(navigator.share) navigator.share({text:текст}).catch(()=>{});
-  else toast('Заказ скопирован — вставь в чат поставщику');
+  else toast('Заказ скопирован');
 }
 function копироватьЗаказ(){
   const группы=группыЗаказа(DB.materials, DB.поставщики);
@@ -143,9 +141,7 @@ function блокПоставщиков(){
       <div class="grow"><div class="title ell">${esc(p.название)}</div>
         <div class="sm muted ell">${esc(КАНАЛЫ[p.канал]||'')} · ${(p.бренды||[]).length?esc(p.бренды.join(', ')):'бренды не выбраны'}</div></div>
       <span class="chev">›</span></div></div>`).join('')}
-    <button class="btn soft" onclick="поставщикSheet()">＋ Добавить поставщика</button>
-    <div class="sm muted">${пп.length?'Бренд без поставщика — заказ можно скопировать и отправить как удобно.'
-      :'Заведи поставщика — и заказ из «Заказать» уйдёт ему в Telegram или WhatsApp одним нажатием.'}</div>`;
+    <button class="btn soft" onclick="поставщикSheet()">＋ Добавить поставщика</button>`;
 }
 let _пост=null, _постНазад=null;
 function поставщикSheet(id, бренд, назад){
@@ -173,7 +169,7 @@ function поставщикSheet(id, бренд, назад){
     <label class="fld" style="margin-bottom:8px"><span>Куда отправлять заказ</span></label>
     <div class="seg2" style="margin-bottom:14px">${Object.keys(КАНАЛЫ).map(x=>`<button class="${x===к?'on':''}" onclick="каналПоставщика('${x}')">${КАНАЛЫ[x]}</button>`).join('')}</div>
     ${полеКонтакта?`<label class="fld"><span>${полеКонтакта[0]}</span><input id="ps_contact" value="${esc(_пост.контакт)}" placeholder="${полеКонтакта[1]}" ${к==='mail'?'type="email" inputmode="email"':к==='wa'?'type="tel" inputmode="tel"':'autocapitalize="off"'} autocomplete="off"></label>`
-      :`<div class="sm muted" style="margin:-4px 0 12px">При отправке откроется меню «Поделиться» — выберешь мессенджер и чат.</div>`}
+      :''}
     <label class="fld"><span>Подпись в конце заказа</span><input id="ps_sign" value="${esc(_пост.подпись)}" placeholder="Варя, колорист"></label>`,
     [_пост.id?`<button class="btn danger wauto" onclick="удалитьПоставщика()" aria-label="Удалить">🗑</button>`
              :`<button class="btn ghost" onclick="закрытьПоставщика()">Отмена</button>`,

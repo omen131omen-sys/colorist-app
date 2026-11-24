@@ -84,7 +84,7 @@ function workSheet(id){
       <div class="kv"><span class="k">Цена</span><span class="v">${money(w.цена)}</span></div>
       ${margCounted(w)?`<div class="kv"><span class="k">Себестоимость</span><span class="v">${money(w.себестоимость)}</span></div>
       <div class="kv"><span class="k">Маржа</span><span class="v" style="color:${margLevel(w.маржа,w.цена).c}">${money(w.маржа)} · ${w.цена?Math.round(w.маржа/w.цена*100):0}%</span></div>`
-      :`<div class="sm muted" style="padding-top:8px">Маржа не считается — работа до ${fmtDay(MARG_FROM)}, материалы по ней не заносились.</div>`}
+      :`<div class="sm muted" style="padding-top:8px">Маржа не считается — работа до ${fmtDay(MARG_FROM)}</div>`}
     </div>
     <button class="btn soft" onclick="copyRecipe('${id}')">📋 Скопировать рецепт для DIKIDI</button>`,
     [`<button class="btn danger wauto" onclick="delWork('${id}')">🗑</button>`,
@@ -202,7 +202,7 @@ function drawNewWork(){
   // Поля «Остаток смеси в отход» больше нет (решение 08.11: не заполнялось ни разу). У старых работ
   // значение живёт в _nw.остаток: правка его сохраняет, карточка работы показывает, если оно было.
   openSheet(_nw._editId?'Изменить работу':'Расчёт работы', `
-    <label class="fld"><span>Услуга (для цены и статистики)</span>
+    <label class="fld"><span>Услуга</span>
       <select onchange="_nw.услуга_id=this.value;loadNwLines();drawNewWork()">
         ${sById(_nw.услуга_id)?'':`<option value="${_nw.услуга_id}" selected>${esc(_nw._svcName||'?')} (удалена из прайса)</option>`}
         ${DB.services.map(x=>`<option value="${x.id}" ${x.id===_nw.услуга_id?'selected':''}>${esc(x.название)}</option>`).join('')}
@@ -216,7 +216,6 @@ function drawNewWork(){
         <span>Задним числом<br><span class="xs muted">не списывать склад</span></span>
       </label>
     </div>
-    ${_nw._noStock?`<div class="sm" style="color:var(--brand);margin:-4px 2px 10px">📌 Прошлая работа: остатки склада не трогаем. Строки расхода можно не заполнять — себестоимость посчитается по тем, что укажешь (иначе 0).</div>`:''}
 
     <div class="card" style="background:var(--brand-soft);border-color:var(--brand-line)">
       <div class="xs" style="color:var(--brand);font-weight:700;margin-bottom:6px">ФОРМУЛА ИЗ DIKIDI</div>
@@ -225,13 +224,13 @@ function drawNewWork(){
     </div>
 
     <div class="section-title"><span>Сверка расхода</span><span class="link" onclick="_nw.lines.push({материал_id:null,граммы:0});drawNewWork()">＋ строка</span></div>
-    ${linesHtml||'<div class="sm muted" style="margin-bottom:10px">Пусто — можно так и оставить. Для консультации, укладки и подобного материалы не тратятся.</div>'}
+    ${linesHtml}
 
     ${нормыБлок()}
 
     <label class="fld" style="margin-top:12px"><span>Сколько взяла с клиента, ₽${(()=>{const s=sById(_nw.услуга_id);return s&&svcTo(s)>svcFrom(s)?` <span class="xs muted">(по прайсу ${svcPriceText(s)})</span>`:'';})()}</span>
       <input id="nw_price" type="number" inputmode="numeric" value="${_nw.цена}" onchange="_nw.цена=+this.value;recalcNw()"></label>
-    <label class="fld"><span>Время работы, мин (для «доход/час»)</span>
+    <label class="fld"><span>Время работы, мин</span>
       <input type="number" inputmode="numeric" value="${_nw.время||''}" placeholder="90" onchange="_nw.время=+this.value"></label>
     <div class="card" id="nw_summary"></div>
   `, [`<button class="btn ghost" onclick="closeSheet()">Отмена</button>`,
@@ -263,7 +262,7 @@ function нормыБлок(){
   }).join('');
   const убрали=нормыУслуги(sById(_nw.услуга_id)).filter(x=>!список.find(o=>o.id===x.id));
   return `<div class="section-title"><span>Типовой расход</span><span class="muted mono">${money(итог)}</span></div>
-    ${строки||'<div class="sm muted" style="margin-bottom:10px">Пусто. Задаётся в услуге: Услуги → нужная → «Изменить».</div>'}
+    ${строки}
     ${убрали.length?`<div class="sm muted" style="margin:-2px 2px 10px">Убрано из работы: ${
       убрали.map(x=>esc((нById(x.id)||{}).название)).join(', ')} · <span class="link" onclick="_nw.нормы=нормыУслуги(sById(_nw.услуга_id));drawNewWork()">вернуть</span></div>`:''}`;
 }

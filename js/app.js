@@ -163,9 +163,8 @@ function экранСклад(){
         :`<span class="pill"><i class="dot"></i>всё в норме</span>`}</div>
       <div class="num hero" style="font-size:56px;margin-top:14px">${fmt(всего)}<small>₽</small></div>
       <div class="levels">${шкала}</div>
-      <div class="sub">Краска по уровням тона, граммы в наличии</div>
     </div>
-    <label class="search">${ИК.search}<input id="st_q" type="search" placeholder="Поиск: 9.23, оксид, Lumia" value="${esc(_поиск)}"
+    <label class="search">${ИК.search}<input id="st_q" type="search" placeholder="Поиск" value="${esc(_поиск)}"
       oninput="_поиск=this.value;обновитьСклад()" autocomplete="off" enterkeyhint="search">
       <button class="x" style="${_поиск?'':'visibility:hidden'}" onclick="event.preventDefault();_поиск='';go('stock',true)" aria-label="Очистить">✕</button></label>
     <div class="chips">${чипы.map(([k,l])=>`<button class="chip ${k===_кат?'on':''}" onclick="_кат='${k}';go('stock',true)">${l}</button>`).join('')}</div>
@@ -182,7 +181,7 @@ function сеткаМатериалов(){
   // в «На исходе» сначала красные «мало» — их заказывать первыми; внутри — порядок палитры
   if(_кат==='исход') список=[...список.filter(m=>stockState(m).badge==='r'), ...список.filter(m=>stockState(m).badge!=='r')];
   if(список.length) return `<div class="grid">${список.map(карточкаМатериала).join('')}</div>`;
-  return `<div class="glass empty"><div class="em">📦</div>${q?`Ничего не найдено по «${esc(_поиск)}»`:mats.length?'Здесь пусто':'Склад пуст — добавь материал или проведи приход'}</div>`;
+  return `<div class="glass empty"><div class="em">📦</div>${q?`Ничего не найдено по «${esc(_поиск)}»`:mats.length?'Здесь пусто':'Склад пуст'}</div>`;
 }
 // Поиск перерисовывает только сетку: иначе поле пересоздаётся и клавиатура на телефоне закрывается
 function обновитьСклад(){
@@ -228,7 +227,7 @@ function matSheet(id){
   // «Хватит»: по темпу расхода, если он есть; иначе — сколько средних порций в остатке
   const прогноз = дн!=null
     ? (дн<=0 ? `<div class="num">0</div><div class="note">закончился</div>`
-             : `<div class="num"${срокХватит(дн).length>8?' style="font-size:23px"':''}>${срокХватит(дн)}</div><div class="note">хватит при нынешнем расходе</div>`)
+             : `<div class="num"${срокХватит(дн).length>8?' style="font-size:23px"':''}>${срокХватит(дн)}</div><div class="note">хватит</div>`)
     : порция ? `<div class="num">${Math.floor(m.остаток_г/порция)}</div><div class="note">${plural(Math.floor(m.остаток_г/порция),'работа','работы','работ')} по ${fmtG(Math.round(порция))} г</div>`
     : `<div class="num">—</div><div class="note">ещё не расходовался</div>`;
   openSheet(`<span class="eyebrow">${esc(линейка(m))}</span><span class="swatch" style="background:${образец(m)}"></span>${esc(оттенокМ(m))}`, `
@@ -239,7 +238,7 @@ function matSheet(id){
     <!-- − и + под шкалой, а не на ней: в концепте кнопки накрывали её концы -->
     <div class="adjust">
       <button class="pm" onclick="подправить('${id}',-1)" aria-label="Меньше на ${шаг} г">−</button>
-      <div class="sm muted">± ${шаг} г к остатку — например, после взвешивания</div>
+      <div class="sm muted">± ${шаг} г</div>
       <button class="pm" onclick="подправить('${id}',1)" aria-label="Больше на ${шаг} г">+</button>
     </div>
     ${l?`<div class="eyebrow">Уровень тона · ${l}, ${УРОВЕНЬ[l]}</div>
@@ -274,7 +273,7 @@ function экранУслуги(){
   const C=2*Math.PI*23;
   let h=`<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="tg">
       <stop offset="0" stop-color="#5c3f2d"/><stop offset="1" stop-color="#e2c79e"/></linearGradient></defs></svg>
-    <div class="hello"><div><div class="eyebrow">Прайс-лист</div><div class="h1">Услуги</div></div></div>`;
+    <div class="hello"><div><div class="h1">Услуги</div></div></div>`;
   if(!DB.services.length) h+=`<div class="glass empty"><div class="em">✂️</div>Услуг пока нет</div>`;
   h+=DB.services.map(s=>{
     const st=svcStats(s);
@@ -314,7 +313,7 @@ function экранРаботы(){
   const заМесяц=DB.works.filter(w=>w.дата.slice(0,7)===_день.slice(0,7));
   const месяц=MONTHS[d.getMonth()].toLowerCase();
   const подпись=_день===t?'Сегодня':_день===сдвигДня(t,-1)?'Вчера':датаСлово(_день);
-  let h=`<div class="hello"><div><div class="eyebrow">Журнал · ${месяц} ${d.getFullYear()}</div><div class="h1">Работы</div></div>
+  let h=`<div class="hello"><div><div class="eyebrow">${месяц} ${d.getFullYear()}</div><div class="h1">Работы</div></div>
       <div class="r"><button class="round sm" onclick="листатьНеделю(-1)" aria-label="Прошлая неделя">‹</button>
         <button class="round sm" ${сдвигДня(пн,7)<=t?'':'disabled'} onclick="листатьНеделю(1)" aria-label="Следующая неделя">›</button></div></div>
     <div class="days">${неделя.map(x=>{ const dd=new Date(x+'T00:00');
@@ -374,9 +373,8 @@ function экранРасход(){
       <label class="amount"><input id="qa_sum" inputmode="decimal" placeholder="0" aria-label="Сумма"><span>₽</span></label>
     </div>
     <div class="chips">${EXP_MANUAL_CATS.map(k=>`<button class="chip ${k===_расхКат?'on':''}" onclick="выбратьКатегорию(this,'${k}')">${EXP_CATS[k]}</button>`).join('')}</div>
-    <label class="field">Что купили<input id="qa_note" placeholder="Например, фольга 100 м"></label>
+    <label class="field">Что купили<input id="qa_note"></label>
     <button class="cta" onclick="быстрыйРасход()">Добавить расход</button>
-    <div class="hint">Краски, оксиды, пудра и уход приходят сюда сами — через «Приход» на складе.</div>
     <button class="glass item" onclick="equipSheet()"><span class="ico">${ИК.tools}</span>
       <div class="main"><div class="t">Оборудование</div><div class="s">${(DB.equipment||[]).length} поз. · вложено ${fmt(equipTotal())} ₽</div></div><span class="chev">›</span></button>
     <div class="hello" style="padding:6px 2px 0"><div class="eyebrow">Траты за ${назв.toLowerCase()} · ${list.length}</div></div>
@@ -409,8 +407,7 @@ function закупкаSheet(id){
       <div class="kv"><span class="k">Сумма</span><span class="v">${money(e.сумма)}</span></div>
       ${e.граммы?`<div class="kv"><span class="k">Пришло на склад</span><span class="v">${fmtG(e.граммы)} г</span></div>`:''}
       ${e.цена_до!=null&&e.цена_до!==e.цена_после?`<div class="kv"><span class="k">Цена упаковки</span><span class="v">${money(e.цена_до)} → ${money(e.цена_после)}</span></div>`:''}
-    </div>
-    <div class="sm muted">Закупки приходят сюда со склада. Удаление откатит и деньги, и граммы, и цену упаковки.</div>`,
+    </div>`,
     [`<button class="btn danger wauto" onclick="delExpense('${id}')">🗑</button>`,
      `<button class="btn ghost" onclick="closeSheet()">Закрыть</button>`]);
 }
@@ -467,7 +464,7 @@ function экранОтчёт(){
       <div class="sub">${ws.length} ${plural(ws.length,'работа','работы','работ')}${rev?` · лучший день — ${лучший+1} ${МЕС_РОД[r.d.getMonth()]}`:''}</div>
     </div>
     <div class="two">
-      <div class="glass"><div class="cap">Прибыль</div><div class="num" style="color:${rev-spend>=0?'var(--ink)':'var(--red)'}">${fmt(rev-spend)}<small>₽</small></div><div class="note">выручка минус все траты</div></div>
+      <div class="glass"><div class="cap">Прибыль</div><div class="num" style="color:${rev-spend>=0?'var(--ink)':'var(--red)'}">${fmt(rev-spend)}<small>₽</small></div><div class="note">за месяц</div></div>
       <div class="glass"><div class="cap">Маржа</div><div class="num">${mRev?Math.round(marg/mRev*100):'—'}<small>${mRev?'%':''}</small></div><div class="note">${mRev?'средняя по работам':'себестоимость не считалась'}</div></div>
     </div>
     <div class="two">
@@ -534,9 +531,9 @@ function экранОтчёт(){
    Содержимое — цех «Настройки» (renderSettings): версия, сервер, нормы, копии, сброс. */
 function экранНастройки(){
   // Тест голоса — временная страница: проверить на её iPhone, как диктовка понимает формулы
-  return `<div class="hello"><div><div class="eyebrow">Сервер, копии, нормы</div><div class="h1">Настройки</div></div></div>
+  return `<div class="hello"><div><div class="h1">Настройки</div></div></div>
     <button class="glass item" onclick="location.href='voice-test.html'"><span class="ico">${ИК.mic}</span>
-      <div class="main"><div class="t">Тест голоса</div><div class="s">надиктуй формулу и посмотри, что получится</div></div><span class="chev">›</span></button>
+      <div class="main"><div class="t">Тест голоса</div></div><span class="chev">›</span></button>
     <div class="settings">${блокПоставщиков()}${renderSettings()}</div>`;
 }
 

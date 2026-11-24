@@ -53,7 +53,6 @@ function renderExpenses(){
 function editExpense(id){
   const e = id ? (DB.expenses.find(x=>x.id===id)||{}) : {категория:'мелочь', сумма:'', дата:todayISO(), заметка:''};
   openSheet(id?'Изменить расход':'Новый расход', `
-    <div class="sm muted" style="margin-bottom:12px">«Расходники» — перчатки, фольга, шапочки, полотенца/пеньюары одноразовые. «Косметика/уход» — шампуни, кондиционеры, укладочные, термозащита. Краски, оксиды, порошок, смывка, маски — через «Приход» на Складе.</div>
     <label class="fld"><span>Категория</span>
       <select id="ex_cat">${EXP_MANUAL_CATS.map(k=>`<option value="${k}" ${e.категория===k?'selected':''}>${EXP_CATS[k]}</option>`).join('')}</select></label>
     <div class="fld-row">
@@ -114,7 +113,7 @@ function equipSheet(){
       <div class="title mono">${money((e.цена||0)*(e.кол_во||1))}</div></div></div>`).join('');
   openSheet('Оборудование', `
     <div class="stat" style="margin-bottom:10px"><div class="lab">Всего вложено</div><div class="num mono">${money(equipTotal())}</div></div>
-    ${rows||'<div class="sm muted" style="margin-bottom:8px">Пока пусто. Добавь фен, утюжок, пеньюары…</div>'}
+    ${rows||'<div class="sm muted" style="margin-bottom:8px">Пока пусто</div>'}
     <button class="btn soft" onclick="editEquip('')">＋ Добавить оборудование</button>`,
     [`<button class="btn ghost" onclick="closeSheet()">Закрыть</button>`]);
 }

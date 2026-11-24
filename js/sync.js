@@ -82,7 +82,9 @@ async function syncNow(){
   _sync.busy=true;
   try{
     const h={'X-Key':c.key||''};
-    const r=await fetch(syncUrl(c), {headers:h, cache:'no-store'});
+    // Свежесть — меткой в адресе, не cache:'no-store': с ней Safari на iPhone добавляет к запросу
+    // Cache-Control и Pragma, сервер их в CORS не разрешает — и обмен падал с «Load failed».
+    const r=await fetch(syncUrl(c)+'?t='+Date.now(), {headers:h});
     if(r.status===401) throw new Error('неверный ключ');
     let remote=null;
     if(r.status!==404){                                // 404 — на сервере пусто

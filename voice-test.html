@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#d6cbc1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Тест голоса · Учёт</title>
+<link rel="icon" href="icon180.png?v=3">
+<link rel="stylesheet" href="css/app.css">
+<style>
+  /* Отдельная проверочная страница: формула голосом. Данные приложения только читает. */
+  body{min-height:100%;overflow-y:auto}
+  /* страница длинная и листается целиком: сообщение — к экрану, а не к началу страницы */
+  .toast{position:fixed}
+  .wrap{max-width:480px;margin:0 auto;padding:16px 16px 48px;display:flex;flex-direction:column;gap:14px}
+  .mic{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:68px;border-radius:999px;
+    background:var(--night);color:var(--on-night);font-size:17px;font-weight:700;box-shadow:0 12px 26px rgba(30,18,10,.28)}
+  .mic.on{background:var(--low);color:var(--on-night)}
+  .mic[disabled]{opacity:.4}
+  .live{min-height:22px;font-size:15px;color:var(--ink-2);font-style:italic}
+  .line{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--glass-sep);font-size:15px}
+  .line:last-child{border-bottom:0}
+  .line b{flex:none;font-variant-numeric:tabular-nums}
+  .line.bad{color:var(--red)}
+  .line.amb{color:var(--amber)}
+  .verdict{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+  .att{font-size:13px;line-height:1.4;padding:9px 0;border-bottom:1px solid var(--glass-sep)}
+  .att:last-child{border-bottom:0}
+  .att .ok{color:var(--green);font-weight:700}.att .no{color:var(--red);font-weight:700}
+  .say{font-size:15px;line-height:1.5}
+  .say i{font-style:normal;font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><a class="link" href="./">‹ В приложение</a><span class="eyebrow">проверка</span></div>
+  <div class="hello" style="padding:0"><div><div class="eyebrow">Формула голосом</div><div class="h1">Тест голоса</div></div></div>
+
+  <div class="glass say">
+    Скажи формулу так, как говоришь у кресла. Например:<br>
+    <i>«шесть два тридцать грамм плюс полтора процента девяносто грамм»</i><br>
+    <span class="sm muted">Приложение ничего не запишет и не спишет — только покажет, как поняло.</span>
+  </div>
+
+  <div class="glass">
+    <div class="cap" style="margin-bottom:10px"><span>Способ 1 · кнопка</span><span class="pill" id="srState">…</span></div>
+    <button class="mic" id="micBtn" onclick="слушать()">🎙 Нажми и говори</button>
+    <div class="live" id="live" style="margin-top:10px"></div>
+  </div>
+
+  <div class="glass">
+    <div class="cap" style="margin-bottom:10px"><span>Способ 2 · клавиатура</span></div>
+    <div class="sm muted" style="margin-bottom:8px">Нажми в поле, потом 🎤 на клавиатуре iPhone (внизу справа) и говори.</div>
+    <textarea id="txt" rows="3" placeholder="сюда надиктуй формулу"></textarea>
+    <button class="btn" style="margin-top:10px" onclick="разобратьПоле()">Разобрать</button>
+  </div>
+
+  <div class="glass" id="res" hidden>
+    <div class="cap" style="margin-bottom:6px"><span>Как поняло</span><span class="pill" id="resN"></span></div>
+    <div class="sm muted" id="resRaw" style="margin-bottom:4px"></div>
+    <div class="sm" id="resF" style="margin-bottom:8px;font-weight:600"></div>
+    <div id="resLines"></div>
+    <div class="verdict">
+      <button class="btn soft" onclick="оценка(true)">✓ Верно</button>
+      <button class="btn soft" onclick="оценка(false)">✗ Неверно</button>
+    </div>
+  </div>
+
+  <div class="glass">
+    <div class="cap" style="margin-bottom:6px"><span>Попытки</span><span class="pill" id="attN">0</span></div>
+    <div id="atts" class="sm muted">Пока пусто.</div>
+    <button class="cta" style="margin-top:12px" onclick="отправить()">Отправить результаты Андрею</button>
+    <button class="btn ghost" style="margin-top:8px" onclick="очистить()">Очистить попытки</button>
+  </div>
+  <div class="sm muted" id="stockNote" style="padding:0 6px"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="js/core.js"></script>
+<script src="js/parser.js"></script>
+<script>
+/* Склад — только для чтения: из той же базы, что у приложения (ключ colorist_v7), ничего не пишем.
+   Если страница открыта в Safari, а приложение стоит на экране «Домой», у Safari своя база — может быть пусто. */
+let МАТ=[];
+try{ const d=JSON.parse(localStorage.getItem('colorist_v7')||'null'); МАТ=(d&&d.materials)||[]; }catch(e){}
+document.getElementById('stockNote').textContent = МАТ.length
+  ? `Сверяю со складом: ${МАТ.length} позиций.`
+  : 'Склад здесь не виден (так бывает в Safari, если приложение стоит на экране «Домой») — покажу коды и граммы без названий.';
+
+const ЖУРНАЛ_КЛЮЧ='colorist_voice_test';    // свой ключ: попытки не смешиваются с данными учёта
+let попытки=[]; try{ попытки=JSON.parse(localStorage.getItem(ЖУРНАЛ_КЛЮЧ)||'[]'); }catch(e){}
+let текущая=null;
+const сохранить=()=>{ try{ localStorage.setItem(ЖУРНАЛ_КЛЮЧ, JSON.stringify(попытки)); }catch(e){} };
+
+function разобрать(текст, способ){
+  текст=(текст||'').trim(); if(!текст) return toast('Пусто — скажи или надиктуй формулу');
+  const формула=голосВФормулу(текст);
+  const строки=parseFormulaText(формула, МАТ);
+  const m=id=>МАТ.find(x=>x.id===id);
+  const html=строки.length ? строки.map(l=>{
+    const мат=m(l.материал_id);
+    if(мат) return `<div class="line"><span>${esc(withBrandSafe(мат))}</span><b>${l.граммы} г</b></div>`;
+    if(l.кандидаты) return `<div class="line amb"><span>несколько: ${esc(l.кандидаты.map(id=>m(id)?m(id).название:'').join(' / '))}</span><b>${l.граммы} г</b></div>`;
+    return `<div class="line${МАТ.length?' bad':''}"><span>${МАТ.length?'не нашла на складе: ':''}«${esc(l.raw)}»</span><b>${l.граммы} г</b></div>`;
+  }).join('') : '<div class="line bad"><span>Не поняла ни одной строки</span></div>';
+  текущая={когда:new Date().toLocaleString('ru-RU'), способ, текст, формула,
+    итог:строки.map(l=>(m(l.материал_id)?m(l.материал_id).название:(l.кандидаты?'?несколько':'?'+l.raw))+' '+l.граммы+'г').join('; '), верно:null};
+  попытки.push(текущая); сохранить(); рисоватьПопытки();
+  document.getElementById('res').hidden=false;
+  document.getElementById('resN').textContent=строки.length+' '+plural(строки.length,'строка','строки','строк');
+  document.getElementById('resRaw').textContent='Услышано: «'+текст+'»';
+  document.getElementById('resF').textContent='Формула: '+(формула||'—');
+  document.getElementById('resLines').innerHTML=html;
+  document.getElementById('res').scrollIntoView({behavior:'smooth', block:'start'});
+}
+function withBrandSafe(m){ const b=(m.бренд||'').trim(); return b&&b!=='—'&&!m.название.toLowerCase().includes(b.toLowerCase())?m.название+' · '+b:m.название; }
+function разобратьПоле(){ разобрать(document.getElementById('txt').value, 'клавиатура'); }
+function оценка(ок){
+  if(!текущая) return;
+  текущая.верно=ок; сохранить(); рисоватьПопытки();
+  toast(ок?'Отмечено: верно ✓':'Отмечено: неверно — пригодится, чтобы поправить');
+}
+function рисоватьПопытки(){
+  document.getElementById('attN').textContent=попытки.length;
+  document.getElementById('atts').innerHTML=попытки.length ? попытки.slice().reverse().map((a,i)=>
+    `<div class="att">${a.верно===true?'<span class="ok">✓</span> ':a.верно===false?'<span class="no">✗</span> ':''}<b>${esc(a.способ)}</b> · «${esc(a.текст)}»<br>→ ${esc(a.итог||'ничего')}</div>`).join('')
+    : 'Пока пусто.';
+}
+function отчёт(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  const шапка=[`Тест голоса · ${new Date().toLocaleString('ru-RU')}`,
+    `Кнопка: ${SR?'есть':'нет'} · с экрана «Домой»: ${navigator.standalone?'да':'нет'} · склад: ${МАТ.length}`,
+    navigator.userAgent.replace(/^Mozilla\/5\.0 /,'')];
+  return шапка.concat(попытки.map((a,i)=>`#${i+1} ${a.верно===true?'✓':a.верно===false?'✗':'·'} [${a.способ}] «${a.текст}» → ${a.формула} → ${a.итог}`)).join('\n');
+}
+async function отправить(){
+  if(!попытки.length) return toast('Сначала попробуй надиктовать');
+  const text=отчёт();
+  if(navigator.share){ try{ await navigator.share({text}); return; }catch(e){ if(e&&e.name==='AbortError') return; } }
+  try{ await navigator.clipboard.writeText(text); toast('Скопировано — вставь Андрею в Telegram'); }
+  catch(e){ document.getElementById('txt').value=text; toast('Текст в поле выше — выдели и скопируй'); }
+}
+function очистить(){ попытки=[]; текущая=null; сохранить(); рисоватьПопытки(); document.getElementById('res').hidden=true; }
+
+/* Способ 1: распознавание речи браузера (на iPhone — через Siri; в приложении с экрана «Домой» может не работать). */
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+const кнопка=document.getElementById('micBtn'), живое=document.getElementById('live'), сост=document.getElementById('srState');
+let рек=null, итог='';
+сост.textContent=SR?'доступна':'недоступна';
+if(!SR){ кнопка.disabled=true; живое.textContent='В этом окне браузер не умеет слушать сам — пользуйся способом 2.'; }
+function слушать(){
+  if(рек){ рек.stop(); return; }
+  итог=''; живое.textContent='Слушаю…';
+  рек=new SR(); рек.lang='ru-RU'; рек.interimResults=true; рек.continuous=true; рек.maxAlternatives=1;
+  кнопка.classList.add('on'); кнопка.textContent='■ Стоп — разобрать';
+  рек.onresult=e=>{
+    let пром=''; итог='';
+    for(let i=0;i<e.results.length;i++){ const r=e.results[i]; if(r.isFinal) итог+=r[0].transcript+' '; else пром+=r[0].transcript; }
+    живое.textContent=(итог+пром).trim()||'Слушаю…';
+  };
+  рек.onerror=e=>{ живое.textContent='Ошибка распознавания: '+e.error+(e.error==='not-allowed'||e.error==='service-not-allowed'?' — нет разрешения на микрофон или Siri выключена':''); };
+  рек.onend=()=>{
+    кнопка.classList.remove('on'); кнопка.textContent='🎙 Нажми и говори'; рек=null;
+    const t=(итог||живое.textContent||'').replace(/^Слушаю…$/,'').trim();
+    if(t && !/^Ошибка/.test(t)) разобрать(t, 'кнопка');
+  };
+  try{ рек.start(); }catch(e){ живое.textContent='Не запустилось: '+e.message; рек=null; кнопка.classList.remove('on'); кнопка.textContent='🎙 Нажми и говори'; }
+}
+рисоватьПопытки();
+</script>
+</body>
+</html>

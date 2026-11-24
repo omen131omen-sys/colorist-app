@@ -512,7 +512,10 @@ function экранОтчёт(){
 /* ==================== НАСТРОЙКИ ====================
    Содержимое — цех «Настройки» (renderSettings): версия, сервер, нормы, копии, сброс. */
 function экранНастройки(){
+  // Тест голоса — временная страница: проверить на её iPhone, как диктовка понимает формулы
   return `<div class="hello"><div><div class="eyebrow">Сервер, копии, нормы</div><div class="h1">Настройки</div></div></div>
+    <button class="glass item" onclick="location.href='voice-test.html'"><span class="ico">🎙</span>
+      <div class="main"><div class="t">Тест голоса</div><div class="s">надиктовать формулу и проверить, как поняло</div></div><span class="chev">›</span></button>
     <div class="settings">${renderSettings()}</div>`;
 }
 

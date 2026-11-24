@@ -467,8 +467,8 @@ label.chk > span{font-size:14px;font-weight:600;line-height:1.25}
   .edge .bgtop{display:block;position:absolute;left:0;right:0;top:0;height:calc(var(--safe-top) + 20px);overflow:hidden;z-index:3;pointer-events:none;
     -webkit-mask-image:linear-gradient(#000 calc(100% - 20px),transparent);mask-image:linear-gradient(#000 calc(100% - 20px),transparent)}
   .edge .bgtop .bg{inset:-40px -40px auto;height:420px}
-  /* высота страницы у iOS тут короче экрана на строку состояния — приложение тянем до низа */
-  .short .phone{position:fixed;top:0;left:0;right:0;height:calc(100% + var(--safe-top))}
+  /* высота страницы у iOS тут короче экрана — приложение тянем на всю высоту экрана (--app-h из app.js) */
+  .short .phone{position:fixed;top:0;left:0;right:0;height:var(--app-h)}
   /* Старая установка: iOS рисует свою полосу цветом theme-color (= --ground); список у края
      плавно уходит в тот же цвет — без «чёлки» с резким краем. */
   html:not(.edge) .phone::before{content:"";position:absolute;left:0;right:0;top:0;height:26px;z-index:4;pointer-events:none;

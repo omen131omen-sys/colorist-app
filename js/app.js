@@ -600,9 +600,26 @@ function закрытьМеню(){ document.getElementById('radial').classList.r
   const верх=p.getBoundingClientRect().height; p.remove();
   if(верх>0) html.classList.add('edge');
   // iOS в этом режиме рисует страницу с самого верха экрана, а высоту считает без строки
-  // состояния — снизу оставалась полоса голого фона высотой с неё (.short тянет до низа).
-  if(верх>0 && navigator.standalone && html.clientHeight+верх<=screen.height+2) html.classList.add('short');
+  // состояния — снизу оставалась полоса голого фона. С экрана «Домой» приложение и так во весь
+  // экран, поэтому если страница ниже экрана — тянем её ровно на высоту экрана (.short).
+  // Не «высота + отступ сверху»: на iPhone с «островком» отступ 59, а недостача 54.
+  const сЭкранаДомой = navigator.standalone || matchMedia('(display-mode: standalone)').matches;
+  function подогнатьВысоту(){
+    const экран = innerWidth<innerHeight ? Math.max(screen.width,screen.height) : Math.min(screen.width,screen.height);
+    const коротко = верх>0 && сЭкранаДомой && html.clientHeight < экран-1;
+    html.classList.toggle('short', коротко);
+    html.style.setProperty('--app-h', коротко ? экран+'px' : '100%');
+  }
+  подогнатьВысоту(); addEventListener('resize', подогнатьВысоту);
 })();
+// Размеры экрана — по нажатию на «Сборка …» в Настройках: если вёрстка на телефоне снова
+// разойдётся с экраном, хватит одного скриншота.
+function размерыЭкрана(){
+  const p=document.createElement('div'); p.style.cssText='position:absolute;top:0;height:env(safe-area-inset-top,0px);visibility:hidden';
+  document.body.appendChild(p); const верх=Math.round(p.getBoundingClientRect().height); p.remove();
+  const ph=document.getElementById('phone').getBoundingClientRect();
+  toast(`экран ${screen.width}×${screen.height} · окно ${innerWidth}×${innerHeight} · страница ${document.documentElement.clientHeight} · сверху ${верх} · приложение ${Math.round(ph.top)}–${Math.round(ph.bottom)} · ${document.documentElement.className||'—'}`);
+}
 построитьКолесо();
 load();
 go('stock');

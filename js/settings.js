@@ -26,7 +26,7 @@ function renderSettings(){
       ${строкаНастроек('archive','Резервная копия', backupShort(), 'копияSheet()')}
     </div>
     <div class="sgroup glass">${строкаНастроек('trash','Удалить все данные', null, 'resetData()', 'danger')}</div>
-    <div class="sver">Сборка ${APP_BUILD}</div>
+    <div class="sver" onclick="размерыЭкрана()">Сборка ${APP_BUILD}</div>
     <input id="backupFile" type="file" accept=".json,application/json" style="display:none" onchange="importBackup(this)">`;
 }
 function серверSheet(){

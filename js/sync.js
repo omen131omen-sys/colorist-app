@@ -7,7 +7,7 @@
    поправленный без сети, затирал всё, что внесли с телефона. Теперь трёхстороннее слияние:
    base — последняя версия, о которой договорились с сервером; сравнивая с ней, видно,
    кто что менял. Менял один — берём его. Менялись оба — сливаем по id, поле за полем. */
-const SYNC_LISTS=['materials','pieces','services','works','purchases','expenses','equipment','нормы'];
+const SYNC_LISTS=['materials','pieces','services','works','purchases','expenses','equipment','нормы','поставщики'];
 // Остатки меняются с обеих сторон одновременно (тут списали, там пришло) — складываем разницу.
 const SYNC_COUNTERS=['остаток_г','остаток_шт'];
 const _same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);

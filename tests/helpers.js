@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-const ЦЕХА = ['core', 'costing', 'store', 'parser', 'stock', 'sync'];
+const ЦЕХА = ['core', 'costing', 'store', 'parser', 'stock', 'order', 'sync'];
 
 function loadApp(db) {
   const mem = {};

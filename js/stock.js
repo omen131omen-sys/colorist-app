@@ -130,7 +130,6 @@ function toggleStock(k){
   _stockOpen[k]=!_stockOpen[k];
   const b=document.getElementById('stockBody'); if(b) b.innerHTML=renderStockBody();
 }
-/* Список «Заказать» — позиции на исходе, копируется одной кнопкой. */
 /* Бренд к названию — но только если его там ещё нет (у оксидов он уже вшит). */
 function withBrand(название, бренд){
   const br=(бренд||'').trim();
@@ -138,26 +137,7 @@ function withBrand(название, бренд){
   const key=br.toLowerCase().split(/\s+/)[0];
   return название.toLowerCase().includes(key) ? название : название+' · '+br;
 }
-function orderList(){
-  return sortMats(DB.materials.filter(m=>m.остаток_г<=m.мин_остаток_г))
-    .map(m=>({название:m.название, бренд:m.бренд, текст:`${fmtG(m.остаток_г)} г`}));
-}
-function orderSheet(){
-  const list=orderList();
-  if(!list.length) return toast('Всё в норме — заказывать нечего ✅');
-  const rows=list.map(x=>`<div class="kv"><span class="k">${esc(withBrand(x.название,x.бренд))}</span><span class="v mono" style="color:var(--red);white-space:nowrap">${esc(x.текст)}</span></div>`).join('');
-  openSheet('Заказать', `
-    <div class="sm muted" style="margin-bottom:10px">Меньше минимального остатка: ${list.length} ${plural(list.length,'позиция','позиции','позиций')}. Скопируй список и отправь поставщику.</div>
-    <div class="card">${rows}</div>`,
-    [`<button class="btn ghost" onclick="closeSheet()">Закрыть</button>`,
-     `<button class="btn" onclick="copyOrder()">📋 Скопировать список</button>`]);
-}
-function copyOrder(){
-  const list=orderList();
-  const t='Заказать:\n'+list.map(x=>'• '+withBrand(x.название,x.бренд)+' — '+x.текст).join('\n');
-  if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(()=>toast('Список скопирован'),()=>fallbackCopy(t));
-  else fallbackCopy(t);
-}
+/* «Заказать» (orderSheet) — в цехе «Заказ» (js/order.js): по поставщикам, с отправкой в мессенджер. */
 function matSheet(id){
   const m = mById(id);
   const st = stockState(m);

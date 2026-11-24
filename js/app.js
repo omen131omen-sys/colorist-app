@@ -16,6 +16,8 @@ const ИК={
   expenses:svgИк('<rect x="3.5" y="6.5" width="17" height="13" rx="3"/><path d="M4 7.5a2 2 0 0 1 2-2h10.5a1 1 0 0 1 1 1v1"/><path d="M15.5 12.2h3.2v3h-3.2a1.5 1.5 0 0 1 0-3Z"/>'),
   report:svgИк('<path d="M3 17c3-6 5-9 7.5-6S15 15 17 10s3-5 4-5"/><path d="M3 21h18"/>'),
   incoming:svgИк('<path d="M12 3v11M7.5 9.5 12 14l4.5-4.5"/><path d="M4 15v2.5A2.5 2.5 0 0 0 6.5 20h11a2.5 2.5 0 0 0 2.5-2.5V15"/>'),
+  mic:svgИк('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0"/><path d="M12 17.5V21"/>'),
+  order:svgИк('<path d="M3.5 4.5h2.2l2 10.2h10.4l1.9-7.2H6.6"/><circle cx="9.2" cy="18.6" r="1.4"/><circle cx="16.6" cy="18.6" r="1.4"/>'),
   side:svgИк('<rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M20.5 8v4"/>'),
   gear:svgИк('<path d="M4 7h8M16 7h4"/><circle cx="14" cy="7" r="2.1"/><path d="M4 12h4M12 12h8"/><circle cx="10" cy="12" r="2.1"/><path d="M4 17h8M16 17h4"/><circle cx="14" cy="17" r="2.1"/>'),
   search:svgИк('<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/>'),
@@ -144,7 +146,7 @@ function экранСклад(){
   let h=`<div class="hello"><div><div class="eyebrow">${датаСлово()}</div><div class="h1">${приветствие()}</div></div></div>
     <div class="dark">
       <div class="cap"><span>Склад на сумму</span>${мало
-        ?`<button class="pill" onclick="orderSheet()"><i class="dot low"></i>${мало} к заказу</button>`
+        ?`<button class="pill" onclick="открытьЗаказ()"><i class="dot low"></i>${мало} к заказу</button>`
         :`<span class="pill"><i class="dot"></i>всё в норме</span>`}</div>
       <div class="num hero" style="font-size:56px;margin-top:14px">${fmt(всего)}<small>₽</small></div>
       <div class="levels">${шкала}</div>
@@ -519,9 +521,9 @@ function экранОтчёт(){
 function экранНастройки(){
   // Тест голоса — временная страница: проверить на её iPhone, как диктовка понимает формулы
   return `<div class="hello"><div><div class="eyebrow">Сервер, копии, нормы</div><div class="h1">Настройки</div></div></div>
-    <button class="glass item" onclick="location.href='voice-test.html'"><span class="ico">🎙</span>
+    <button class="glass item" onclick="location.href='voice-test.html'"><span class="ico">${ИК.mic}</span>
       <div class="main"><div class="t">Тест голоса</div><div class="s">надиктуй формулу и посмотри, что получится</div></div><span class="chev">›</span></button>
-    <div class="settings">${renderSettings()}</div>`;
+    <div class="settings">${блокПоставщиков()}${renderSettings()}</div>`;
 }
 
 /* ==================== КРУГОВОЕ МЕНЮ ====================
@@ -532,6 +534,7 @@ const СЕКТОРЫ=[
   {l:'Отчёт', ic:'report', run:()=>go('report')},
   {l:'Склад', ic:'stock', run:()=>go('stock')},
   {l:'Приход', ic:'incoming', run:()=>{ go('stock'); incomingSheet(); }},
+  {l:'Заказ', ic:'order', run:()=>{ go('stock'); открытьЗаказ(); }},
 ];
 function построитьКолесо(){
   const R0=74,R1=166,ST=10,G=5,n=СЕКТОРЫ.length,span=360/n;

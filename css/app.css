@@ -167,7 +167,7 @@ button.glass{width:100%;text-align:left}
 .item .main{flex:1;min-width:0}
 .item .t{font-weight:600;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .item .s{font-size:13px;color:var(--ink-2);margin-top:2px}
-.ico{width:42px;height:42px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--glass-soft);border:1px solid var(--glass-line)}
+.ico{width:42px;height:42px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:21px;background:var(--glass-soft);border:1px solid var(--glass-line)}
 .ico svg{width:20px;height:20px}
 .chev{color:var(--ink-2);font-size:20px;flex:none}
 
@@ -379,6 +379,30 @@ select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.o
 /* поля в ряд — по нижнему краю: если подпись одного переносится, поля всё равно на одной линии */
 .fld-row{display:flex;gap:10px;align-items:flex-end}
 .fld-row > *{flex:1;min-width:0}
+/* заказ поставщику: группа, строка с галочкой и количеством упаковок */
+.grp{font-weight:700;font-size:16px;min-width:0}
+.grp small{display:block;font-weight:500;font-size:12.5px;color:var(--ink-2);margin-top:2px;overflow-wrap:anywhere}
+.orow{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--glass-sep)}
+.orow:last-of-type{border-bottom:0}
+.orow .nm{flex:1;min-width:0}
+.orow .nm div:first-child{font-weight:600;font-size:14.5px;overflow-wrap:anywhere}
+.orow .nm div:last-child{font-size:12.5px;margin-top:2px}
+.orow.off .nm div:first-child{color:var(--ink-2)}
+.box{width:26px;height:26px;border-radius:8px;flex:none;border:1.5px solid rgba(39,30,25,.3);background:rgba(255,255,255,.75);position:relative}
+.box.on{background:var(--night);border-color:var(--night)}
+.box.on::after{content:'';position:absolute;left:8px;top:4px;width:5px;height:11px;border:solid var(--on-night);border-width:0 2px 2px 0;transform:rotate(45deg)}
+.qty{display:flex;align-items:center;gap:2px;flex:none}
+.qty button{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:18px;background:var(--glass-soft);border:1px solid var(--glass-line)}
+.qty b{min-width:46px;text-align:center;font-size:14px;font-variant-numeric:tabular-nums}
+.btn[disabled]{opacity:.4;pointer-events:none}
+/* карточка поставщика: бренды и канал отправки — переключатели */
+.bchips{display:flex;flex-wrap:wrap;gap:8px}
+.bchips button{padding:9px 13px;border-radius:999px;font-size:14px;font-weight:600;background:rgba(255,255,255,.75);border:1px solid rgba(39,30,25,.12);text-align:left}
+.bchips button.on{background:var(--night);color:var(--on-night);border-color:transparent}
+.bchips small{font-weight:500;color:var(--ink-2);font-size:12.5px}
+.seg2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.seg2 button{padding:11px 8px;border-radius:14px;font-weight:600;font-size:14px;line-height:1.25;background:rgba(255,255,255,.75);border:1px solid rgba(39,30,25,.12)}
+.seg2 button.on{background:var(--night);color:var(--on-night);border-color:transparent}
 /* выбор материала: подпись переносится, прозрачный список поверх ловит касание */
 .pick{position:relative;display:flex;align-items:center;min-height:48px;padding:11px 36px 11px 14px;border-radius:16px;
   border:1px solid rgba(39,30,25,.14);background:rgba(255,255,255,.75) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%234f3f34' stroke-width='2'><path d='M4 6l4 4 4-4'/></svg>") no-repeat right 12px center}

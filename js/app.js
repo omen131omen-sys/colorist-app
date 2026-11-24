@@ -65,8 +65,20 @@ function уровень(m){
   const l=parseInt(c.split('.')[0],10);
   return l>=1 && l<=10 ? l : null;      // корректоры 0.xx — без уровня
 }
+/* Краска без распознанного номера («Прямой пигмент розовый (Estel)», «Краска OLLIN 0/0»):
+   крупно — последнее слово, оно и отличает (цвет, 0/0, BBC18); остальное — в строку с брендом.
+   Иначе крупная подпись повторяла строку под ней и обрезалась на «Прямой пигм…». */
+function _безНомера(m){
+  const бренд=(m.бренд&&m.бренд!=='—')?m.бренд:'';
+  let s=m.название.split('·')[0].replace(/^краска\s+/i,'').replace(/\([^)]*\)/g,' ');
+  if(бренд) s=s.replace(new RegExp('(^|\\s)'+бренд.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'(?=\\s|$)','ig'),' ');
+  const слова=s.trim().split(/\s+/).filter(Boolean);
+  if(!слова.length) return null;
+  const последнее=слова.pop();
+  return {оттенок:последнее.charAt(0).toUpperCase()+последнее.slice(1), серия:слова.join(' ')};
+}
 function оттенокМ(m){                     // крупная подпись на карточке
-  if(m.тип==='краска'){ const c=_matCode(m); if(c) return c; }
+  if(m.тип==='краска'){ const c=_matCode(m); if(c) return c; const б=_безНомера(m); if(б) return б.оттенок; }
   if(m.тип==='оксид'){ const p=_matPct(m); if(p) return p.replace('.',',')+' %'; }
   if(m.тип==='пудра') return 'Пудра';
   if(m.тип==='смывка') return 'Смывка';
@@ -76,7 +88,8 @@ function линейка(m){                      // строка под подп
   const бренд=(m.бренд&&m.бренд!=='—')?m.бренд:'';
   if(/^корректор/i.test(m.название)) return ['Корректор',бренд].filter(Boolean).join(' · ');
   if(m.тип==='краска'){
-    const серия=m.название.replace(/^краска\s*/i,'').replace(_matCode(m)||'','').trim();
+    const б=!_matCode(m)&&_безНомера(m);
+    const серия=б ? б.серия : m.название.replace(/^краска\s*/i,'').replace(_matCode(m)||'','').trim();
     return [серия,бренд].filter(Boolean).join(' · ') || TYPE[m.тип];
   }
   if(m.тип==='оксид') return ['Оксид',бренд].filter(Boolean).join(' · ');
@@ -178,13 +191,14 @@ function обновитьСклад(){
 }
 function карточкаМатериала(m){
   const st=stockState(m), ш=оттенокМ(m), дн=хватит(m);
+  // Номер — в одной строке с кружком: так карточка ниже. Плашке статуса рядом с номером
+  // в полэкрана места нет — она встаёт вместо «из 93» (сколько осталось, и так видно по шкале).
+  const плашка=st.badge==='r'?'<span class="pill low">мало</span>':st.badge==='a'?'<span class="pill warn">на исходе</span>':'';
   return `<button class="glass mat" onclick="matSheet('${m.id}')">
-    <div class="row"><span class="swatch" style="background:${образец(m)}"></span>${
-      // «заканчивается» не помещалось рядом с кружком в карточке шириной в полэкрана
-      st.badge==='r'?'<span class="pill low">мало</span>':st.badge==='a'?'<span class="pill warn">на исходе</span>':''}</div>
-    <div><div class="shade${ш.length>6?' long':''}">${esc(ш)}</div><div class="brand">${esc(линейка(m))}</div></div>
+    <div><div class="row"><span class="swatch" style="background:${образец(m)}"></span><span class="shade${ш.length>6||/[a-zа-яё]{3}/i.test(ш)?' long':''}">${esc(ш)}</span></div>
+      <div class="brand">${esc(линейка(m))}</div></div>
     ${штрихи(Math.min(1,упаковок(m)),18,цветШтрихов(m))}
-    <div class="left"><b class="${st.badge==='r'?'low':st.badge==='a'?'warn':''}">${fmtG(m.остаток_г)} г</b><span>${подписьУпаковки(m)}</span></div>
+    <div class="left"><b class="${st.badge==='r'?'low':st.badge==='a'?'warn':''}">${fmtG(m.остаток_г)} г</b>${плашка||`<span>${подписьУпаковки(m)}</span>`}</div>
     ${дн?`<div class="fc${дн<=14?' soon':''}">${подписьХватит(дн)}</div>`:''}
   </button>`;
 }

@@ -287,16 +287,26 @@ function logPurchase(o){
 
 /* ==================== ПРИХОД СПИСКОМ ==================== */
 /* Варианты для выпадашки материала. Кандидаты подбора — наверх, остальные — как на складе.
-   Бренд в подписи: иначе «Оксид 6%» от разных марок не различить. */
+   Бренд в подписи: иначе «Оксид 6%» от разных марок не различить. Слово «Краска» в начале
+   не пишем: в выпадашке шириной в телефон из-за него обрезался бренд, а почти весь склад — краска. */
+const подписьВыбора=m=>withBrand(m.название.replace(/^краска\s+/i,''), m.бренд);
 function matOptions(id, candIds){
   let h='';
   if(candIds&&candIds.length){
-    h+=candIds.map(cid=>{const c=mById(cid); return c?`<option value="${c.id}">${esc(c.название)} (${esc(c.бренд)})</option>`:'';}).join('');
+    h+=candIds.map(cid=>{const c=mById(cid); return c?`<option value="${c.id}">${esc(подписьВыбора(c))}</option>`:'';}).join('');
     h+=`<option value="" disabled>──────────</option>`;
   }
   h+=sortMats(DB.materials).map(m=>
-    `<option value="${m.id}" ${m.id===id?'selected':''}>${esc(withBrand(m.название,m.бренд))}</option>`).join('');
+    `<option value="${m.id}" ${m.id===id?'selected':''}>${esc(подписьВыбора(m))}</option>`).join('');
   return h;
+}
+/* Поле выбора материала. Текст выбранного — обычной строкой, она переносится; сам список прозрачный
+   поверх и открывается касанием, как обычно. Голый <select> переносить не умеет и резал длинные
+   названия («Кислотная смывка шаг 1 · Hair Se») об край поля. */
+function выборМатериала(id, candIds, onchange){
+  const m=id?mById(id):null;
+  return `<span class="pick"><span class="pick-t">${m?esc(подписьВыбора(m)):'— выбрать —'}</span>
+    <select aria-label="Материал" onchange="${onchange}"><option value="">— выбрать —</option>${matOptions(id, candIds)}</select></span>`;
 }
 /* Черновик живёт между открытиями: можно закрыть, завести недостающий материал и вернуться. */
 let _inc=null;
@@ -353,9 +363,7 @@ function incRowHtml(r, i){
       <span class="iconbtn" style="flex:none;width:28px;height:28px" onclick="incDel(${i})">✕</span>
     </div>
     <label class="fld" style="margin-bottom:8px"><span>${label}</span>
-      <select onchange="incSet(${i},'m',this.value)">
-        <option value="">— выбрать —</option>${matOptions(r.материал_id, amb?r.кандидаты:null)}
-      </select></label>
+      ${выборМатериала(r.материал_id, amb?r.кандидаты:null, `incSet(${i},'m',this.value)`)}</label>
     <div class="fld-row" style="gap:8px">
       <label class="fld" style="margin-bottom:0"><span>Упак.</span>
         <input type="number" inputmode="decimal" step="0.5" value="${v(r.уп)}" onchange="incSet(${i},'уп',this.value)"></label>
@@ -472,7 +480,7 @@ function matKind(k, m){
       </div>
       <div class="fld-row">
         <label class="fld"><span>Грамм в упаковке</span><input id="f_net" type="number" inputmode="numeric" value="${m?m.нетто_г:''}" placeholder="100"></label>
-        <label class="fld"><span>Вес пустой тары, г <span class="xs muted">(не обяз.)</span></span><input id="f_tare" type="number" inputmode="numeric" value="${m&&m.тара_г?m.тара_г:''}" placeholder="—"></label>
+        <label class="fld"><span>Пустая тара, г</span><input id="f_tare" type="number" inputmode="numeric" value="${m&&m.тара_г?m.тара_г:''}" placeholder="—"></label>
       </div>
       <div class="sm muted" style="margin:-4px 0 12px">Цена за грамм = цена ÷ грамм в упаковке. Граммы прикидываются из мл (краска ≈ 0,93 г/мл — по замеру: тюбик 108 г − тара 15 г = 93 г на 100 мл). Взвесила точнее — впиши своё. Тара — только для сверки остатка на весах.</div>
       <div class="fld-row">

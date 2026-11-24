@@ -80,7 +80,7 @@ function workSheet(id){
     ${pieces?`<div class="card">${pieces}</div>`:''}
     ${нормы?`<div class="section-title"><span>Типовой расход</span></div><div class="card">${нормы}</div>`:''}
     <div class="card">
-      <div class="kv"><span class="k">Остаток смеси (в отход)</span><span class="v">${w.остаток_смеси_г} г</span></div>
+      ${w.остаток_смеси_г?`<div class="kv"><span class="k">Остаток смеси (в отход)</span><span class="v">${w.остаток_смеси_г} г</span></div>`:''}
       <div class="kv"><span class="k">Цена</span><span class="v">${money(w.цена)}</span></div>
       ${margCounted(w)?`<div class="kv"><span class="k">Себестоимость</span><span class="v">${money(w.себестоимость)}</span></div>
       <div class="kv"><span class="k">Маржа</span><span class="v" style="color:${margLevel(w.маржа,w.цена).c}">${money(w.маржа)} · ${w.цена?Math.round(w.маржа/w.цена*100):0}%</span></div>`
@@ -180,24 +180,22 @@ function drawNewWork(){
     const style = amb ? 'border-color:#f2ddb0;background:var(--amber-soft)'
                 : bad ? 'border-color:#f3bcbc;background:var(--red-soft)' : '';
     const label = amb ? '<span style="color:var(--amber)">найдено несколько — выберите серию</span>'
-                : bad ? '<span style="color:var(--red)">не распознано — выберите</span>'
-                : (m?TYPE[m.тип]:'Материал');
+                : bad ? '<span style="color:var(--red)">не распознано — выберите</span>' : '';
+    // Выпадашка — во всю ширину строки: рядом с граммами она обрезала «Lumia 7.34» до «7.3»,
+    // а для колориста это другой оттенок. Граммы — второй строкой, рядом остаток и цена строки.
     return `<div class="step-card" style="${style}">
-      <div class="fld-row" style="gap:8px;align-items:flex-end">
-        <label class="fld" style="margin-bottom:0;flex:2">
-          <span>${label}</span>
-          <select onchange="_nw.lines[${i}].материал_id=this.value||null;_nw.lines[${i}].кандидаты=null;drawNewWork()">
-            <option value="">— выбрать —</option>${matOptions(ln.материал_id, amb?ln.кандидаты:null)}
-          </select></label>
-        <label class="fld" style="margin-bottom:0;flex:1">
-          <span>Грамм ${warn?'<span style="color:var(--red)">!</span>':''}</span>
-          <input type="number" inputmode="numeric" value="${ln.граммы}" onchange="_nw.lines[${i}].граммы=+this.value;recalcNw()"></label>
-        <span class="iconbtn" style="margin-bottom:2px" onclick="_nw.lines.splice(${i},1);drawNewWork()">✕</span>
+      <label class="fld" style="margin-bottom:8px">${label?`<span>${label}</span>`:''}
+        ${выборМатериала(ln.материал_id, amb?ln.кандидаты:null, `_nw.lines[${i}].материал_id=this.value||null;_nw.lines[${i}].кандидаты=null;drawNewWork()`)}</label>
+      <div class="row" style="gap:10px">
+        <label class="gram"><input type="number" inputmode="numeric" value="${ln.граммы}" aria-label="Граммы"${warn?' style="border-color:var(--red)"':''}
+          onchange="_nw.lines[${i}].граммы=+this.value;recalcNw()"><span>г</span></label>
+        <div class="xs grow" style="${warn?'color:var(--red)':''}">${
+          warn?`⚠ не хватает ${fmtG(ln.граммы-availFor(ln.материал_id))} г (есть ${fmtG(availFor(ln.материал_id))} г) — остаток уйдёт в 0`
+          :m?`<span class="muted">остаток ${fmtG(m.остаток_г)} г · ${money1(gpr(m))}/г<br>строка <b style="color:var(--ink)">${money(ln.граммы*gpr(m))}</b></span>`:''}</div>
+        <span class="iconbtn" onclick="_nw.lines.splice(${i},1);drawNewWork()" aria-label="Убрать строку">✕</span>
       </div>
-      ${amb?`<div class="xs" style="margin-top:6px;color:var(--amber)">«${esc(ln.raw||'')}»: ${ln.кандидаты.map(cid=>{const c=mById(cid);return c?esc(c.название):'';}).filter(Boolean).join(' / ')}</div>`:''}
-      ${bad&&ln.raw?`<div class="xs muted" style="margin-top:6px">Из формулы: «${esc(ln.raw)}»</div>`:''}
-      ${warn?`<div class="xs" style="margin-top:6px;color:var(--red)">⚠ не хватает ${fmtG(ln.граммы-availFor(ln.материал_id))} г (доступно ${fmtG(availFor(ln.материал_id))} г) — остаток уйдёт в 0, позиция «пора заказать»</div>`
-        :(m?`<div class="xs muted" style="margin-top:6px">Остаток ${fmtG(m.остаток_г)} г · ${money1(gpr(m))}/г · строка ${money(ln.граммы*gpr(m))}</div>`:'')}
+      ${amb?`<div class="xs" style="margin-top:8px;color:var(--amber)">«${esc(ln.raw||'')}»: ${ln.кандидаты.map(cid=>{const c=mById(cid);return c?esc(c.название):'';}).filter(Boolean).join(' / ')}</div>`:''}
+      ${bad&&ln.raw?`<div class="xs muted" style="margin-top:8px">Из формулы: «${esc(ln.raw)}»</div>`:''}
     </div>`;
   }).join('');
 
@@ -256,7 +254,7 @@ function нормыБлок(){
           <div class="xs muted ell">${фикс?money(n.цена)+' за работу':money1(n.цена)+'/'+ЕД[n.ед]}${n.накидка?` · +${n.накидка}% погрешность`:''}</div>
         </div>
         ${фикс?'':`<input type="number" inputmode="numeric" value="${x.кол}" aria-label="${ЕД[n.ед]}"
-          style="flex:none;width:74px;padding:9px;text-align:center"
+          style="flex:none;width:58px;padding:9px 4px;text-align:center"
           onchange="_nw.нормы[${i}].кол=+this.value;drawNewWork()">`}
         <span class="mono" style="flex:none;width:62px;text-align:right">${money(с)}</span>
         <span class="iconbtn" style="flex:none;width:28px;height:28px" onclick="_nw.нормы.splice(${i},1);drawNewWork()">✕</span>

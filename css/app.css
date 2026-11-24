@@ -126,8 +126,10 @@ button.glass{width:100%;text-align:left}
 .lv em{font-style:normal;font-size:12px;font-weight:600;color:var(--on-night-2);font-variant-numeric:tabular-nums}
 .lv.on em{color:var(--on-night)}
 
-.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:2px 16px}
+.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:2px 40px 2px 16px}
 .chips::-webkit-scrollbar{display:none}
+/* ряд листается вбок: край растворяется, а не режет чип об рамку экрана */
+.chips{-webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 36px),transparent);mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 36px),transparent)}
 .chip{flex:none;padding:10px 16px;border-radius:999px;font-size:14px;font-weight:600;background:var(--glass);border:1px solid var(--glass-line);
   backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
 .chip.on{background:var(--night);color:var(--on-night);border-color:transparent}
@@ -142,7 +144,8 @@ button.glass{width:100%;text-align:left}
 
 .grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
 .mat{display:flex;flex-direction:column;gap:11px;text-align:left;padding:16px;border-radius:26px;min-width:0}
-.mat .row{display:flex;align-items:center;justify-content:space-between}
+.mat .row{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+.mat .row .pill{min-width:0;overflow:hidden;text-overflow:ellipsis;padding:5px 10px}
 .swatch{display:inline-block;flex:none;width:34px;height:34px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(255,255,255,.4),0 4px 10px rgba(40,25,15,.2)}
 .mat .shade{font-family:var(--f-num);font-weight:400;font-size:29px;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mat .shade.long{font-size:21px;line-height:1.2}
@@ -221,9 +224,12 @@ button.glass{width:100%;text-align:left}
 .two .glass .note{font-size:13px;color:var(--ink-2);margin-top:6px;line-height:1.3}
 .bars{display:flex;flex-direction:column;gap:12px}
 .bar .l{display:flex;justify-content:space-between;gap:10px;font-size:14px;margin-bottom:6px}
+/* название услуги сокращается многоточием, а «× 3» и сумма всегда видны целиком */
+.bar .l .nm{display:flex;align-items:baseline;min-width:0}
+.bar .l .nm span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bar .l span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bar .l b{font-variant-numeric:tabular-nums;flex:none}
-.bar .l em{font-style:normal;font-size:12.5px;font-weight:700;margin-left:6px}
+.bar .l em{font-style:normal;font-size:12.5px;font-weight:700;margin-left:6px;flex:none;white-space:nowrap}
 .bar .l em.n{color:var(--ink-2);font-weight:600}
 .bar .tr{height:6px;border-radius:6px;background:rgba(39,30,25,.1);overflow:hidden}
 .bar .tr i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,#5c3f2d,#cfab7f,#f1e0bd)}
@@ -271,11 +277,13 @@ button.glass{width:100%;text-align:left}
 
 .gauge{position:relative;width:300px;max-width:100%;margin:0 auto}
 .gauge svg{display:block;width:100%;height:auto}
-.gauge .val{position:absolute;left:0;right:0;top:78px;text-align:center}
+/* подпись внутри дуги: не шире её просвета */
+.gauge .val{position:absolute;left:40px;right:40px;top:78px;text-align:center}
 .gauge .val .num{font-size:60px}
 .gauge .val div{font-size:13px;color:var(--ink-2);margin-top:6px}
-.gauge .pm{position:absolute;bottom:2px;width:52px;height:52px;border-radius:50%;background:var(--night);color:var(--on-night);display:grid;place-items:center;font-size:26px;font-weight:300}
-.gauge .pm.minus{left:0}.gauge .pm.plus{right:0}
+.adjust{display:flex;align-items:center;gap:12px;margin:2px 0 18px}
+.adjust .sm{flex:1;text-align:center}
+.adjust .pm{flex:none;width:52px;height:52px;border-radius:50%;background:var(--night);color:var(--on-night);display:grid;place-items:center;font-size:26px;font-weight:300}
 .tscale{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;margin:8px 0 16px}
 .tscale div{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;color:var(--ink-2);font-variant-numeric:tabular-nums}
 .tscale span{width:100%;height:22px;border-radius:7px}
@@ -288,9 +296,11 @@ button.glass{width:100%;text-align:left}
 .stat .lab{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
 .stat .lab + .num{margin-top:8px}
 
-.toast{position:absolute;left:50%;top:56px;z-index:60;transform:translate(-50%,-20px);opacity:0;padding:11px 18px;border-radius:999px;background:var(--night);color:var(--on-night);
-  font-size:14px;font-weight:600;max-width:calc(100% - 32px);text-align:center;transition:.3s;pointer-events:none}
-.toast.show{opacity:1;transform:translate(-50%,0)}
+/* сообщение — плашкой во всю ширину поверх строки шапки: узкое по центру налезало на «Колорист» и кнопки */
+.toast{position:absolute;left:12px;right:12px;top:54px;z-index:60;min-height:48px;display:flex;align-items:center;justify-content:center;
+  transform:translateY(-14px);opacity:0;padding:10px 18px;border-radius:24px;background:var(--night);color:var(--on-night);
+  box-shadow:0 14px 30px rgba(30,18,10,.3);font-size:14px;font-weight:600;line-height:1.3;text-align:center;transition:.3s;pointer-events:none}
+.toast.show{opacity:1;transform:none}
 .confirm-bg{position:absolute;inset:0;z-index:50;background:rgba(30,20,15,.35);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
   display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;pointer-events:none;transition:opacity .2s}
 .confirm-bg.open{opacity:1;pointer-events:auto}
@@ -366,8 +376,19 @@ textarea{resize:vertical}
 input:focus,select:focus,textarea:focus{outline:2px solid rgba(231,199,133,.8);outline-offset:0}
 select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%234f3f34' stroke-width='2'><path d='M4 6l4 4 4-4'/></svg>");
   background-repeat:no-repeat;background-position:right 12px center;padding-right:34px}
-.fld-row{display:flex;gap:10px}
+/* поля в ряд — по нижнему краю: если подпись одного переносится, поля всё равно на одной линии */
+.fld-row{display:flex;gap:10px;align-items:flex-end}
 .fld-row > *{flex:1;min-width:0}
+/* выбор материала: подпись переносится, прозрачный список поверх ловит касание */
+.pick{position:relative;display:flex;align-items:center;min-height:48px;padding:11px 36px 11px 14px;border-radius:16px;
+  border:1px solid rgba(39,30,25,.14);background:rgba(255,255,255,.75) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%234f3f34' stroke-width='2'><path d='M4 6l4 4 4-4'/></svg>") no-repeat right 12px center}
+.pick-t{font-size:16px;font-weight:500;line-height:1.3;color:var(--ink);min-width:0;overflow-wrap:anywhere}
+.pick select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;padding:0;border:0}
+.pick:focus-within{outline:2px solid rgba(231,199,133,.8)}
+/* граммы строки расхода: узкое поле с единицей справа */
+.gram{display:flex;align-items:center;gap:6px;flex:none}
+.gram input{width:78px;text-align:center;padding:11px 8px}
+.gram span{font-weight:700;color:var(--ink-2)}
 label.chk{display:flex;align-items:center;gap:9px;cursor:pointer;-webkit-user-select:none;user-select:none}
 label.chk input[type=checkbox]{width:24px;height:24px;flex:none;margin:0;padding:0;border-radius:8px;border:1.5px solid rgba(39,30,25,.3);background:rgba(255,255,255,.75);position:relative}
 label.chk input[type=checkbox]:checked{background:var(--night);border-color:var(--night)}
@@ -394,7 +415,7 @@ label.chk > span{font-size:14px;font-weight:600;line-height:1.25}
   .phone{width:100%;height:100%;border-radius:0;box-shadow:none}
   .screen{padding-top:16px}
   .tabbar{bottom:max(12px,env(safe-area-inset-bottom,0px))}
-  .toast{top:16px}
+  .toast{top:12px}
   /* на телефоне пряди стоят: размытие под каждой карточкой на анимированном фоне садит батарею */
   .bg i{animation:none}
 }

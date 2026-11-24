@@ -174,7 +174,8 @@ function карточкаМатериала(m){
   const st=stockState(m), ш=оттенокМ(m), дн=хватит(m);
   return `<button class="glass mat" onclick="matSheet('${m.id}')">
     <div class="row"><span class="swatch" style="background:${образец(m)}"></span>${
-      st.badge==='r'?'<span class="pill low">мало</span>':st.badge==='a'?'<span class="pill warn">заканчивается</span>':''}</div>
+      // коротко: «заканчивается» не помещалось рядом с кружком в карточке шириной в полэкрана
+      st.badge==='r'?'<span class="pill low">мало</span>':st.badge==='a'?'<span class="pill warn">кончается</span>':''}</div>
     <div><div class="shade${ш.length>6?' long':''}">${esc(ш)}</div><div class="brand">${esc(линейка(m))}</div></div>
     ${штрихи(Math.min(1,упаковок(m)),18,цветШтрихов(m))}
     <div class="left"><b class="${st.badge==='r'?'low':st.badge==='a'?'warn':''}">${fmtG(m.остаток_г)} г</b><span>${подписьУпаковки(m)}</span></div>
@@ -213,10 +214,13 @@ function matSheet(id){
     <div class="gauge">${дуга(m)}
       <div class="val"><div class="num">${fmtG(m.остаток_г)}<small>г</small></div>
         <div>${упаковок(m)>1.05?'≈ '+fmt1(упаковок(m))+' уп. по '+fmtG(m.нетто_г)+' г':'из '+fmtG(m.нетто_г)+' г в упаковке'}</div></div>
-      <button class="pm minus" onclick="подправить('${id}',-1)" aria-label="Меньше на ${шаг} г">−</button>
-      <button class="pm plus" onclick="подправить('${id}',1)" aria-label="Больше на ${шаг} г">+</button>
     </div>
-    <div class="sm muted" style="text-align:center;margin:8px 0 16px">− и + поправляют остаток на ${шаг} г без денег — например, после взвешивания</div>
+    <!-- − и + под шкалой, а не на ней: в концепте кнопки накрывали её концы -->
+    <div class="adjust">
+      <button class="pm" onclick="подправить('${id}',-1)" aria-label="Меньше на ${шаг} г">−</button>
+      <div class="sm muted">поправить остаток на ${шаг} г без денег — после взвешивания</div>
+      <button class="pm" onclick="подправить('${id}',1)" aria-label="Больше на ${шаг} г">+</button>
+    </div>
     ${l?`<div class="eyebrow">Уровень тона · ${l}, ${УРОВЕНЬ[l]}</div>
       <div class="tscale">${ТОН.map((c,i)=>`<div class="${i+1===l?'on':''}"><span style="background:${c}"></span>${i+1}</div>`).join('')}</div>`:''}
     <div class="stats">
@@ -474,7 +478,7 @@ function экранОтчёт(){
   if(усл.length){
     const top=поУсл[усл[0]].rev||1;
     h+=`<div class="glass"><div class="cap" style="margin-bottom:14px">Самые доходные услуги</div><div class="bars">${усл.map(k=>{ const o=поУсл[k];
-      return `<div class="bar"><div class="l"><span>${esc(k)} <em class="n">× ${o.n}</em></span><b>${fmt(o.rev)} ₽${o.mRev?`<em style="color:${margLevel(o.marg,o.mRev).c}">${Math.round(o.marg/o.mRev*100)}%</em>`:''}</b></div>
+      return `<div class="bar"><div class="l"><span class="nm"><span>${esc(k)}</span><em class="n">× ${o.n}</em></span><b>${fmt(o.rev)} ₽${o.mRev?`<em style="color:${margLevel(o.marg,o.mRev).c}">${Math.round(o.marg/o.mRev*100)}%</em>`:''}</b></div>
         <div class="tr"><i style="width:${Math.max(3,o.rev/top*100)}%"></i></div></div>`; }).join('')}</div></div>`;
   }
   // траты по категориям

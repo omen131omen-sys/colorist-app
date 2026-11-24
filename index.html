@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#d6cbc1">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" sizes="180x180" href="icon180.png?v=3">
@@ -10,7 +10,7 @@
 <link rel="icon" href="icon180.png?v=3">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Учёт">
 <title>Колорист · Учёт расходников</title>
 <link rel="preload" href="fonts/manrope-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
@@ -22,6 +22,8 @@
   <div class="phone" id="phone">
     <div class="bg"><i></i><i></i><i></i><i></i></div>
     <div class="screen" id="screen"></div>
+    <!-- под часами — тот же фон поверх уехавшего вверх списка (см. .bgtop в app.css) -->
+    <div class="bgtop" aria-hidden="true"><div class="bg"><i></i><i></i><i></i><i></i></div></div>
     <nav class="tabbar" id="tabbar"></nav>
 
     <div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()">

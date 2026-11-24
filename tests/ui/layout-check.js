@@ -38,7 +38,8 @@ async (page) => {
         if (r.left < b.left - 1 || r.right > b.right + 1) out.push('вылезает ' + name(el) + ' из .' + own.className.split(' ')[0]); }
       if (el.matches(BOX) && el.scrollWidth > el.clientWidth + 1) out.push('шире плашки ' + name(el));
     }
-    const layer = e => e.closest('#tabbar') ? 1 : e.closest('#sheetBg') ? 2 : e.closest('#radial') ? 3 : e.closest('#toast') ? 4 : e.closest('#confirmBg') ? 5 : 0;
+    // таб-бар и висящие кнопки склада (.dock) — свои слои: список проходит под ними нарочно
+    const layer = e => e.closest('#tabbar') ? 1 : e.closest('.dock') ? 6 : e.closest('#sheetBg') ? 2 : e.closest('#radial') ? 3 : e.closest('#toast') ? 4 : e.closest('#confirmBg') ? 5 : 0;
     const textRect = el => { const rg = document.createRange(); rg.selectNodeContents(el); const r = rg.getBoundingClientRect(); const v = vis(el);
       return { left: Math.max(r.left, v.left), top: Math.max(r.top, v.top), right: Math.min(r.right, v.right), bottom: Math.min(r.bottom, v.bottom) }; };
     for (let i = 0; i < leaf.length; i++) for (let j = i + 1; j < leaf.length; j++) {

@@ -75,10 +75,27 @@ function _безНомера(m){
   const слова=s.trim().split(/\s+/).filter(Boolean);
   if(!слова.length) return null;
   const последнее=слова.pop();
-  return {оттенок:последнее.charAt(0).toUpperCase()+последнее.slice(1), серия:слова.join(' ')};
+  return {оттенок:последнее.charAt(0).toUpperCase()+последнее.slice(1), серия:слова.join(' '), слово:последнее};
+}
+/* Пигменты и тонеры с цветом в названии («Прямой пигмент розовый»): цвет показывает кружок,
+   слово «Розовый» крупно не пишем. Тройка — светлый блик, основной, тень, как у кружков краски. */
+const ЦВЕТ_ПИГМЕНТА=[
+  [/^ж[её]лт/,'#fff0a8','#f2c12e','#b7860c'], [/^оранж/,'#ffd2a0','#f08a24','#a9540a'],
+  [/^красн/,'#ffb0a8','#d8342e','#8e1712'], [/^малинов/,'#ffb3cf','#c8326e','#7e1440'],
+  [/^розов/,'#ffd0e4','#e8599c','#a42a62'], [/^(фиолет|лилов|сирен)/,'#e2c8ff','#8e55c9','#552a85'],
+  [/^син/,'#b9cdff','#2f5ccc','#162f7a'], [/^голуб/,'#d2efff','#4aa8e0','#1d6c9e'],
+  [/^бирюз/,'#bff3ec','#1fb0a6','#0b6d66'], [/^зел[её]н/,'#c4efd2','#2f9e5a','#16613a'],
+  [/^медн/,'#f6c9a6','#c0682e','#7a3c14'], [/^коричн/,'#d9b49a','#7b4a2b','#432614'],
+  [/^ч[её]рн/,'#8a8a8a','#2a2a2a','#0c0c0c'], [/^сер(ый|ая|ое|ебр)/,'#f1f2f4','#a9adb4','#6c7078'],
+];
+function цветПигмента(m){
+  if(m.тип!=='краска' || _matCode(m)) return null;
+  const б=_безНомера(m); if(!б) return null;
+  const w=б.слово.toLowerCase();
+  return ЦВЕТ_ПИГМЕНТА.find(([re])=>re.test(w)) || null;
 }
 function оттенокМ(m){                     // крупная подпись на карточке
-  if(m.тип==='краска'){ const c=_matCode(m); if(c) return c; const б=_безНомера(m); if(б) return б.оттенок; }
+  if(m.тип==='краска'){ const c=_matCode(m); if(c) return c; if(цветПигмента(m)) return ''; const б=_безНомера(m); if(б) return б.оттенок; }
   if(m.тип==='оксид'){ const p=_matPct(m); if(p) return p.replace('.',',')+' %'; }
   if(m.тип==='пудра') return 'Пудра';
   if(m.тип==='смывка') return 'Смывка';
@@ -96,6 +113,8 @@ function линейка(m){                      // строка под подп
   return бренд || TYPE[m.тип];
 }
 function образец(m){
+  const п=цветПигмента(m);
+  if(п) return `radial-gradient(circle at 35% 30%,${п[1]},${п[2]} 60%,${п[3]})`;
   const l=уровень(m);
   if(l) return `radial-gradient(circle at 35% 30%,${тон(Math.min(10,l+2))},${тон(l)} 60%,${тон(Math.max(1,l-2))})`;
   const c=_matCode(m)||'';
@@ -169,7 +188,7 @@ function экранСклад(){
       <button class="x" style="${_поиск?'':'visibility:hidden'}" onclick="event.preventDefault();_поиск='';go('stock',true)" aria-label="Очистить">✕</button></label>
     <div class="chips">${чипы.map(([k,l])=>`<button class="chip ${k===_кат?'on':''}" onclick="_кат='${k}';go('stock',true)">${l}</button>`).join('')}</div>
     <div id="st_grid">${сеткаМатериалов()}</div>`;
-  h+=`<div class="ctas"><button class="cta light" onclick="editMaterial()">＋ Материал</button>
+  h+=`<div class="ctas dock"><button class="cta light" onclick="editMaterial()">＋ Материал</button>
       <button class="cta" onclick="incomingSheet()">Приход списком</button></div>`;
   return h;
 }
@@ -194,7 +213,7 @@ function карточкаМатериала(m){
   // в полэкрана места нет — она встаёт вместо «из 93» (сколько осталось, и так видно по шкале).
   const плашка=st.badge==='r'?'<span class="pill low">мало</span>':st.badge==='a'?'<span class="pill warn">на исходе</span>':'';
   return `<button class="glass mat" onclick="matSheet('${m.id}')">
-    <div><div class="row"><span class="swatch" style="background:${образец(m)}"></span><span class="shade${ш.length>6||/[a-zа-яё]{3}/i.test(ш)?' long':''}">${esc(ш)}</span></div>
+    <div><div class="row"><span class="swatch" style="background:${образец(m)}"></span>${ш?`<span class="shade${ш.length>6||/[a-zа-яё]{3}/i.test(ш)?' long':''}">${esc(ш)}</span>`:''}</div>
       <div class="brand">${esc(линейка(m))}</div></div>
     ${штрихи(Math.min(1,упаковок(m)),18,цветШтрихов(m))}
     <div class="left"><b class="${st.badge==='r'?'low':st.badge==='a'?'warn':''}">${fmtG(m.остаток_г)} г</b>${плашка||`<span>${подписьУпаковки(m)}</span>`}</div>
@@ -230,7 +249,8 @@ function matSheet(id){
              : `<div class="num"${срокХватит(дн).length>8?' style="font-size:23px"':''}>${срокХватит(дн)}</div><div class="note">хватит</div>`)
     : порция ? `<div class="num">${Math.floor(m.остаток_г/порция)}</div><div class="note">${plural(Math.floor(m.остаток_г/порция),'работа','работы','работ')} по ${fmtG(Math.round(порция))} г</div>`
     : `<div class="num">—</div><div class="note">ещё не расходовался</div>`;
-  openSheet(`<span class="eyebrow">${esc(линейка(m))}</span><span class="swatch" style="background:${образец(m)}"></span>${esc(оттенокМ(m))}`, `
+  const ш=оттенокМ(m), б=!ш&&_безНомера(m);
+  openSheet(`<span class="eyebrow">${esc(б?(m.бренд||''):линейка(m))}</span><span class="swatch" style="background:${образец(m)}"></span>${esc(б?б.серия:ш)}`, `
     <div class="gauge">${дуга(m)}
       <div class="val"><div class="num">${fmtG(m.остаток_г)}<small>г</small></div>
         <div>${упаковок(m)>1.05?'≈ '+fmt1(упаковок(m))+' уп. по '+fmtG(m.нетто_г)+' г':'из '+fmtG(m.нетто_г)+' г в упаковке'}</div></div>
@@ -331,7 +351,7 @@ function экранРаботы(){
 function карточкаРаботы(w){
   const lvl=margLevel(w.маржа, w.цена), pct=w.цена?Math.round(w.маржа/w.цена*100):0;
   const чипы=(w.шаги||[]).map(s=>{ const m=mById(s.материал_id);
-    return `<span class="fchip"><i style="background:${m?образец(m):'#ccc'}"></i>${esc(m?оттенокМ(m):s.название)} · ${fmtG(s.факт_граммы)} г</span>`; }).join('');
+    return `<span class="fchip"><i style="background:${m?образец(m):'#ccc'}"></i>${esc(m?(оттенокМ(m)||(_безНомера(m)||{}).серия||m.название):s.название)} · ${fmtG(s.факт_граммы)} г</span>`; }).join('');
   // до MARG_FROM себестоимость не вели — маржа там была бы «100 %», показываем только чек
   const итог = margCounted(w)
     ? `<span>Материалы <b>${fmt(w.себестоимость||0)} ₽</b></span><span>Чек <b>${fmt(w.цена)} ₽</b></span>
@@ -570,6 +590,16 @@ function открытьМеню(){ closeSheet(); document.getElementById('radial
 function закрытьМеню(){ document.getElementById('radial').classList.remove('open'); }
 
 /* ==================== ЗАПУСК ==================== */
+// Приложение на экране «Домой» рисуется под строкой состояния (index.html: black-translucent).
+// Если iOS это применила, сверху есть отступ под часы — тогда часы белые, и верх фона чуть
+// темнее, чтобы их было видно. Если нет (старая установка) — полоса своя, её прячет переход.
+(function(){
+  const p=document.createElement('div');
+  p.style.cssText='position:absolute;top:0;height:env(safe-area-inset-top,0px);visibility:hidden';
+  document.body.appendChild(p);
+  if(p.getBoundingClientRect().height>0) document.documentElement.classList.add('edge');
+  p.remove();
+})();
 построитьКолесо();
 load();
 go('stock');

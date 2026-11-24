@@ -40,7 +40,7 @@
   <div class="glass say">
     Скажи формулу так, как говоришь у кресла. Например:<br>
     <i>«шесть два тридцать грамм плюс полтора процента девяносто грамм»</i><br>
-    <span class="sm muted">Приложение ничего не запишет и не спишет — только покажет, как поняло.</span>
+    <span class="sm muted">Ничего не запишется и не спишется со склада — только покажет, что получилось.</span>
   </div>
 
   <div class="glass">
@@ -57,7 +57,7 @@
   </div>
 
   <div class="glass" id="res" hidden>
-    <div class="cap" style="margin-bottom:6px"><span>Как поняло</span><span class="pill" id="resN"></span></div>
+    <div class="cap" style="margin-bottom:6px"><span>Что получилось</span><span class="pill" id="resN"></span></div>
     <div class="sm muted" id="resRaw" style="margin-bottom:4px"></div>
     <div class="sm" id="resF" style="margin-bottom:8px;font-weight:600"></div>
     <div id="resLines"></div>
@@ -102,8 +102,8 @@ function разобрать(текст, способ){
     const мат=m(l.материал_id);
     if(мат) return `<div class="line"><span>${esc(withBrandSafe(мат))}</span><b>${l.граммы} г</b></div>`;
     if(l.кандидаты) return `<div class="line amb"><span>несколько: ${esc(l.кандидаты.map(id=>m(id)?m(id).название:'').join(' / '))}</span><b>${l.граммы} г</b></div>`;
-    return `<div class="line${МАТ.length?' bad':''}"><span>${МАТ.length?'не нашла на складе: ':''}«${esc(l.raw)}»</span><b>${l.граммы} г</b></div>`;
-  }).join('') : '<div class="line bad"><span>Не поняла ни одной строки</span></div>';
+    return `<div class="line${МАТ.length?' bad':''}"><span>${МАТ.length?'нет на складе: ':''}«${esc(l.raw)}»</span><b>${l.граммы} г</b></div>`;
+  }).join('') : '<div class="line bad"><span>Ни одной строки не разобрано</span></div>';
   текущая={когда:new Date().toLocaleString('ru-RU'), способ, текст, формула,
     итог:строки.map(l=>(m(l.материал_id)?m(l.материал_id).название:(l.кандидаты?'?несколько':'?'+l.raw))+' '+l.граммы+'г').join('; '), верно:null};
   попытки.push(текущая); сохранить(); рисоватьПопытки();

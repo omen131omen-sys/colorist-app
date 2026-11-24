@@ -127,6 +127,7 @@ function go(tab, оставитьПрокрутку){
 
 /* ==================== СКЛАД ==================== */
 let _кат='все', _поиск='';
+const наИсходе=m=>{ const b=stockState(m).badge; return b==='r'||b==='a'; };
 const КАТЕГОРИИ=[['все','Все'],['исход','На исходе'],['краска','Краска'],['оксид','Оксид'],['пудра','Порошок'],['смывка','Смывка'],['уход','Уход']];
 function экранСклад(){
   const mats=DB.materials;
@@ -136,13 +137,14 @@ function экранСклад(){
   const max=Math.max(...поУр,1);
   const шкала=поУр.map((g,i)=>`<div class="lv ${g?'on':''}"><span style="height:${g?18+62*g/max:10}px;${
     g?`background:${тон(i+1)};box-shadow:0 0 14px ${тон(i+1)}66`:''}"></span><em>${i+1}</em></div>`).join('');
-  // чипы — только те типы, что есть на складе: пустая «Смывка» — лишнее нажатие
-  const чипы=КАТЕГОРИИ.filter(([k])=>k==='все' || (k==='исход'?мало:mats.some(m=>m.тип===k)));
+  // чипы — только те типы, что есть на складе: пустая «Смывка» — лишнее нажатие.
+  // «На исходе» — и красные «мало», и жёлтые «на исходе»: то же слово, что на карточке.
+  const чипы=КАТЕГОРИИ.filter(([k])=>k==='все' || (k==='исход'?mats.some(наИсходе):mats.some(m=>m.тип===k)));
   if(!чипы.find(([k])=>k===_кат)) _кат='все';
   let h=`<div class="hello"><div><div class="eyebrow">${датаСлово()}</div><div class="h1">${приветствие()}</div></div></div>
     <div class="dark">
       <div class="cap"><span>Склад на сумму</span>${мало
-        ?`<button class="pill" onclick="orderSheet()"><i class="dot low"></i>${мало} на исходе</button>`
+        ?`<button class="pill" onclick="orderSheet()"><i class="dot low"></i>${мало} к заказу</button>`
         :`<span class="pill"><i class="dot"></i>всё в норме</span>`}</div>
       <div class="num hero" style="font-size:56px;margin-top:14px">${fmt(всего)}<small>₽</small></div>
       <div class="levels">${шкала}</div>
@@ -159,9 +161,11 @@ function экранСклад(){
 }
 function сеткаМатериалов(){
   const mats=DB.materials, q=_поиск.trim().toLowerCase();
-  const список=sortMats(mats.filter(m=>
-    (_кат==='все' || (_кат==='исход' ? stockState(m).badge==='r' : m.тип===_кат)) &&
+  let список=sortMats(mats.filter(m=>
+    (_кат==='все' || (_кат==='исход' ? наИсходе(m) : m.тип===_кат)) &&
     (!q || (m.название+' '+m.бренд+' '+TYPE[m.тип]).toLowerCase().includes(q))));
+  // в «На исходе» сначала красные «мало» — их заказывать первыми; внутри — порядок палитры
+  if(_кат==='исход') список=[...список.filter(m=>stockState(m).badge==='r'), ...список.filter(m=>stockState(m).badge!=='r')];
   if(список.length) return `<div class="grid">${список.map(карточкаМатериала).join('')}</div>`;
   return `<div class="glass empty"><div class="em">📦</div>${q?`Ничего не найдено по «${esc(_поиск)}»`:mats.length?'Здесь пусто':'Склад пуст — добавь материал или проведи приход'}</div>`;
 }
@@ -174,12 +178,12 @@ function карточкаМатериала(m){
   const st=stockState(m), ш=оттенокМ(m), дн=хватит(m);
   return `<button class="glass mat" onclick="matSheet('${m.id}')">
     <div class="row"><span class="swatch" style="background:${образец(m)}"></span>${
-      // коротко: «заканчивается» не помещалось рядом с кружком в карточке шириной в полэкрана
-      st.badge==='r'?'<span class="pill low">мало</span>':st.badge==='a'?'<span class="pill warn">кончается</span>':''}</div>
+      // «заканчивается» не помещалось рядом с кружком в карточке шириной в полэкрана
+      st.badge==='r'?'<span class="pill low">мало</span>':st.badge==='a'?'<span class="pill warn">на исходе</span>':''}</div>
     <div><div class="shade${ш.length>6?' long':''}">${esc(ш)}</div><div class="brand">${esc(линейка(m))}</div></div>
     ${штрихи(Math.min(1,упаковок(m)),18,цветШтрихов(m))}
     <div class="left"><b class="${st.badge==='r'?'low':st.badge==='a'?'warn':''}">${fmtG(m.остаток_г)} г</b><span>${подписьУпаковки(m)}</span></div>
-    ${дн?`<div class="fc${дн<=14?' soon':''}">хватит ${подписьХватит(дн)}</div>`:''}
+    ${дн?`<div class="fc${дн<=14?' soon':''}">${подписьХватит(дн)}</div>`:''}
   </button>`;
 }
 
@@ -207,8 +211,9 @@ function matSheet(id){
   const цвет=st.badge==='r'?'var(--red)':st.badge==='a'?'var(--amber)':'var(--green)';
   // «Хватит»: по темпу расхода, если он есть; иначе — сколько средних порций в остатке
   const прогноз = дн!=null
-    ? `<div class="num">${дн<=0?'—':esc(подписьХватит(дн).replace('≈ ',''))}</div><div class="note">хватит по её расходу за 2 месяца</div>`
-    : порция ? `<div class="num">≈ ${Math.floor(m.остаток_г/порция)}</div><div class="note">работ хватит, по ${fmtG(Math.round(порция))} г</div>`
+    ? (дн<=0 ? `<div class="num">0</div><div class="note">закончился</div>`
+             : `<div class="num"${срокХватит(дн).length>8?' style="font-size:23px"':''}>${срокХватит(дн)}</div><div class="note">хватит при нынешнем расходе</div>`)
+    : порция ? `<div class="num">${Math.floor(m.остаток_г/порция)}</div><div class="note">${plural(Math.floor(m.остаток_г/порция),'работа','работы','работ')} по ${fmtG(Math.round(порция))} г</div>`
     : `<div class="num">—</div><div class="note">ещё не расходовался</div>`;
   openSheet(`<span class="eyebrow">${esc(линейка(m))}</span><span class="swatch" style="background:${образец(m)}"></span>${esc(оттенокМ(m))}`, `
     <div class="gauge">${дуга(m)}
@@ -218,7 +223,7 @@ function matSheet(id){
     <!-- − и + под шкалой, а не на ней: в концепте кнопки накрывали её концы -->
     <div class="adjust">
       <button class="pm" onclick="подправить('${id}',-1)" aria-label="Меньше на ${шаг} г">−</button>
-      <div class="sm muted">поправить остаток на ${шаг} г без денег — после взвешивания</div>
+      <div class="sm muted">± ${шаг} г к остатку — например, после взвешивания</div>
       <button class="pm" onclick="подправить('${id}',1)" aria-label="Больше на ${шаг} г">+</button>
     </div>
     ${l?`<div class="eyebrow">Уровень тона · ${l}, ${УРОВЕНЬ[l]}</div>
@@ -515,7 +520,7 @@ function экранНастройки(){
   // Тест голоса — временная страница: проверить на её iPhone, как диктовка понимает формулы
   return `<div class="hello"><div><div class="eyebrow">Сервер, копии, нормы</div><div class="h1">Настройки</div></div></div>
     <button class="glass item" onclick="location.href='voice-test.html'"><span class="ico">🎙</span>
-      <div class="main"><div class="t">Тест голоса</div><div class="s">надиктовать формулу и проверить, как поняло</div></div><span class="chev">›</span></button>
+      <div class="main"><div class="t">Тест голоса</div><div class="s">надиктуй формулу и посмотри, что получится</div></div><span class="chev">›</span></button>
     <div class="settings">${renderSettings()}</div>`;
 }
 

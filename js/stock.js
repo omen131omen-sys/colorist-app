@@ -147,7 +147,7 @@ function orderSheet(){
   if(!list.length) return toast('Всё в норме — заказывать нечего ✅');
   const rows=list.map(x=>`<div class="kv"><span class="k">${esc(withBrand(x.название,x.бренд))}</span><span class="v mono" style="color:var(--red);white-space:nowrap">${esc(x.текст)}</span></div>`).join('');
   openSheet('Заказать', `
-    <div class="sm muted" style="margin-bottom:10px">${list.length} ${plural(list.length,'позиция','позиции','позиций')} на исходе. Скопируй список и отправь поставщику.</div>
+    <div class="sm muted" style="margin-bottom:10px">Меньше минимального остатка: ${list.length} ${plural(list.length,'позиция','позиции','позиций')}. Скопируй список и отправь поставщику.</div>
     <div class="card">${rows}</div>`,
     [`<button class="btn ghost" onclick="closeSheet()">Закрыть</button>`,
      `<button class="btn" onclick="copyOrder()">📋 Скопировать список</button>`]);

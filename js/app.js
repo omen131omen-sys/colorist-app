@@ -593,32 +593,36 @@ function закрытьМеню(){ document.getElementById('radial').classList.r
 // Приложение на экране «Домой» рисуется под строкой состояния (index.html: black-translucent).
 // Если iOS это применила, сверху есть отступ под часы (.edge). Если нет (иконку добавили до
 // этой настройки) — полоса своя, её прячет переход у верхнего края.
-(function(){
-  const html=document.documentElement, p=document.createElement('div');
+function отступСверху(){
+  const p=document.createElement('div');
   p.style.cssText='position:absolute;top:0;height:env(safe-area-inset-top,0px);visibility:hidden';
-  document.body.appendChild(p);
-  const верх=p.getBoundingClientRect().height; p.remove();
-  if(верх>0) html.classList.add('edge');
-  // iOS в этом режиме рисует страницу с самого верха экрана, а высоту считает без строки
-  // состояния — снизу оставалась полоса голого фона. С экрана «Домой» приложение и так во весь
-  // экран, поэтому если страница ниже экрана — тянем её ровно на высоту экрана (.short).
-  // Не «высота + отступ сверху»: на iPhone с «островком» отступ 59, а недостача 54.
+  document.body.appendChild(p); const h=p.getBoundingClientRect().height; p.remove();
+  return h;
+}
+// iOS в этом режиме рисует страницу с самого верха экрана, а высоту считает без строки
+// состояния — снизу оставалась полоса голого фона. С экрана «Домой» приложение и так во весь
+// экран, поэтому если страница ниже экрана — тянем её ровно на высоту экрана (.short).
+function подогнатьКрая(){
+  const html=document.documentElement, верх=отступСверху();
   const сЭкранаДомой = navigator.standalone || matchMedia('(display-mode: standalone)').matches;
-  function подогнатьВысоту(){
-    const экран = innerWidth<innerHeight ? Math.max(screen.width,screen.height) : Math.min(screen.width,screen.height);
-    const коротко = верх>0 && сЭкранаДомой && html.clientHeight < экран-1;
-    html.classList.toggle('short', коротко);
-    html.style.setProperty('--app-h', коротко ? экран+'px' : '100%');
-  }
-  подогнатьВысоту(); addEventListener('resize', подогнатьВысоту);
-})();
+  const экран = innerWidth<innerHeight ? Math.max(screen.width,screen.height) : Math.min(screen.width,screen.height);
+  const коротко = верх>0 && сЭкранаДомой && html.clientHeight < экран-1;
+  html.classList.toggle('edge', верх>0);
+  html.classList.toggle('short', коротко);
+  html.style.setProperty('--app-h', коротко ? экран+'px' : '100%');
+}
+подогнатьКрая();
+// Отступ под часы iOS сообщает не сразу: в момент запуска он бывал 0 (сборка 30 из-за этого
+// не растянулась) — проверяем ещё раз после загрузки, при повороте и при возврате в приложение.
+addEventListener('load', подогнатьКрая); addEventListener('resize', подогнатьКрая); addEventListener('pageshow', подогнатьКрая);
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) подогнатьКрая(); });
+[150, 600, 1500].forEach(t=>setTimeout(подогнатьКрая, t));
+addEventListener('touchstart', подогнатьКрая, {once:true, passive:true});
 // Размеры экрана — по нажатию на «Сборка …» в Настройках: если вёрстка на телефоне снова
 // разойдётся с экраном, хватит одного скриншота.
 function размерыЭкрана(){
-  const p=document.createElement('div'); p.style.cssText='position:absolute;top:0;height:env(safe-area-inset-top,0px);visibility:hidden';
-  document.body.appendChild(p); const верх=Math.round(p.getBoundingClientRect().height); p.remove();
   const ph=document.getElementById('phone').getBoundingClientRect();
-  toast(`экран ${screen.width}×${screen.height} · окно ${innerWidth}×${innerHeight} · страница ${document.documentElement.clientHeight} · сверху ${верх} · приложение ${Math.round(ph.top)}–${Math.round(ph.bottom)} · ${document.documentElement.className||'—'}`);
+  toast(`экран ${screen.width}×${screen.height} · окно ${innerWidth}×${innerHeight} · страница ${document.documentElement.clientHeight} · сверху ${Math.round(отступСверху())} · приложение ${Math.round(ph.top)}–${Math.round(ph.bottom)} · ${document.documentElement.className||'—'}`);
 }
 построитьКолесо();
 load();

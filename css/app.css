@@ -350,11 +350,17 @@ button.glass{width:100%;text-align:left}
 .section-title:first-child{margin-top:4px}
 /* экран настроек — разметка цеха прямо на прядях: заголовки и пояснения — на плашках */
 /* блоки настроек — столбиком с ровным зазором: иначе кнопка, подсказка и карточка слипались */
-.settings{display:flex;flex-direction:column;gap:10px}
-.settings > .card{margin-bottom:0}
-.settings > .section-title{align-self:flex-start;margin:12px 0 0;padding:4px 10px;border-radius:999px;background:var(--glass-soft)}
-.settings > .section-title:first-child{margin-top:0}
-.settings > .sm.muted{margin:0!important;padding:9px 13px;border-radius:16px;background:var(--glass-soft)}
+/* настройки: группы строк, как в настройках iPhone — значение справа, действия в шторках */
+.settings{display:flex;flex-direction:column;gap:14px}
+.sgroup{display:flex;flex-direction:column;padding:2px 0;border-radius:24px}
+.srow{display:flex;align-items:center;gap:12px;width:100%;min-height:56px;padding:10px 14px 10px 12px;text-align:left;position:relative}
+.srow + .srow::before{content:"";position:absolute;top:0;left:58px;right:0;height:1px;background:var(--glass-sep)}
+.srow .t{flex:1;min-width:0;font-weight:600;font-size:15px}
+.srow .v{flex:0 1 auto;min-width:0;max-width:55%;font-size:13.5px;color:var(--ink-2);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.srow .chev{margin-left:-4px}
+.srow.danger .t{color:var(--red)}
+.srow.danger .gico{color:var(--red)}
+.sver{text-align:center;font-size:12px;color:var(--ink-2);font-variant-numeric:tabular-nums}
 .kv{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--glass-sep);font-size:14px}
 .kv:last-child{border-bottom:0}
 .kv .k{color:var(--ink-2);min-width:0}

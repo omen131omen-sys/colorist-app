@@ -133,15 +133,21 @@ function копироватьЗаказ(){
   _скопировать(части.join('\n\n'), 'Заказ скопирован');
 }
 
-/* ---------- поставщики: список в Настройках и карточка ---------- */
-function блокПоставщиков(){
+/* ---------- поставщики: шторка-список из Настроек и карточка ---------- */
+function поставщикиSheet(){
   const пп=DB.поставщики||[];
-  return `<div class="section-title"><span>Поставщики</span></div>
-    ${пп.map(p=>`<div class="card tap" onclick="поставщикSheet('${p.id}')"><div class="row between">
+  openSheet('Поставщики', `${пп.map(p=>`<div class="card tap" onclick="поставщикSheet('${p.id}',null,'список')"><div class="row between">
       <div class="grow"><div class="title ell">${esc(p.название)}</div>
         <div class="sm muted ell">${esc(КАНАЛЫ[p.канал]||'')} · ${(p.бренды||[]).length?esc(p.бренды.join(', ')):'бренды не выбраны'}</div></div>
       <span class="chev">›</span></div></div>`).join('')}
-    <button class="btn soft" onclick="поставщикSheet()">＋ Добавить поставщика</button>`;
+    <button class="btn soft" onclick="поставщикSheet(null,null,'список')">＋ Добавить поставщика</button>`,
+    [`<button class="btn ghost" onclick="closeSheet()">Закрыть</button>`]);
+}
+// куда вернуться из карточки поставщика: в заказ, в список поставщиков или просто закрыть
+function _назадИзПоставщика(н){
+  if(н==='заказ'){ _зак=null; orderSheet(); return; }
+  if(TAB==='settings') go('settings',true);
+  if(н==='список') поставщикиSheet(); else closeSheet();
 }
 let _пост=null, _постНазад=null;
 function поставщикSheet(id, бренд, назад){
@@ -189,7 +195,7 @@ function брендПоставщика(b){
   поставщикSheet();
 }
 function каналПоставщика(к){ _полеВЧерновик(); if(_пост.канал!==к){ _пост.канал=к; _пост.контакт=''; } поставщикSheet(); }
-function закрытьПоставщика(){ const н=_постНазад; _пост=null; _постНазад=null; if(н==='заказ') orderSheet(); else closeSheet(); }
+function закрытьПоставщика(){ const н=_постНазад; _пост=null; _постНазад=null; if(н==='заказ') orderSheet(); else if(н==='список') поставщикиSheet(); else closeSheet(); }
 function сохранитьПоставщика(){
   _полеВЧерновик();
   const p=_пост;
@@ -205,12 +211,12 @@ function сохранитьПоставщика(){
   else { p.id=uid('sp'); DB.поставщики.push(p); }
   save(); toast('Поставщик сохранён');
   const н=_постНазад; _пост=null; _постНазад=null;
-  if(н==='заказ'){ _зак=null; orderSheet(); } else { closeSheet(); go('settings',true); }
+  _назадИзПоставщика(н);
 }
 function удалитьПоставщика(){
   const id=_пост&&_пост.id; if(!id) return;
   confirmDo('Удалить поставщика? Позиции его брендов в «Заказать» останутся — без кнопки отправки.', ()=>{
     DB.поставщики=(DB.поставщики||[]).filter(p=>p.id!==id);
-    save(); _пост=null; closeSheet(); go('settings',true); toast('Поставщик удалён');
+    const н=_постНазад; save(); _пост=null; _постНазад=null; _назадИзПоставщика(н); toast('Поставщик удалён');
   });
 }

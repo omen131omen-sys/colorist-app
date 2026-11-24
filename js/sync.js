@@ -121,17 +121,21 @@ async function syncNow(){
   }catch(e){ _sync.err=(e&&e.message)||'нет связи'; return false; }
   finally{ _sync.busy=false; if(TAB==='settings') go('settings'); }
 }
-function syncStatusText(){
+/* Коротко — для строки в Настройках: «2 мин назад ✓», «ошибка», «не подключён». */
+function _давно(ms){
+  const m=Math.floor((Date.now()-ms)/60000);
+  if(m<1) return 'только что';
+  if(m<60) return m+' мин назад';
+  const ч=Math.floor(m/60); if(ч<24) return ч+' ч назад';
+  const д=Math.floor(ч/24); return д+' '+plural(д,'день','дня','дней')+' назад';
+}
+function syncStatusShort(){
   const c=syncCfg();
-  if(!c||!c.url) return 'Сервер не подключён. Данные живут только в этом браузере.';
-  let s='Сервер: '+esc(c.url);   // показываем с протоколом — по http с https-страницы браузер режет запрос
-  // Страница по https, а адрес сервера по http — браузер блокирует такой запрос («Load failed»).
-  const mixed = location.protocol==='https:' && /^http:\/\//i.test(c.url);
-  if(mixed) return s+` · <span style="color:var(--red)">адрес по http, а приложение по https — браузер блокирует. Подключитесь заново, указав https://</span>`;
-  if(_sync.err) return s+` · <span style="color:var(--red)">ошибка: ${esc(_sync.err)}</span>`;
-  if(!_sync.at) return s+' · ещё не синхронизировано';
-  const m=Math.floor((Date.now()-_sync.at)/60000);
-  return s+' · <span style="color:var(--green)">синх. '+(m<1?'только что':m+' мин назад')+' ✓</span>';
+  if(!c||!c.url) return 'не подключён';
+  if(location.protocol==='https:' && /^http:\/\//i.test(c.url)) return '<span style="color:var(--red)">адрес по http</span>';
+  if(_sync.err) return '<span style="color:var(--red)">ошибка</span>';
+  if(!_sync.at) return 'ещё не было';
+  return '<span style="color:var(--green)">'+_давно(_sync.at)+' ✓</span>';
 }
 async function connectSync(){
   let url=(document.getElementById('sy_url').value||'').trim().replace(/\/+$/,'');
@@ -174,13 +178,14 @@ window.addEventListener('online', ()=>{ pushSync(); });
 
 /* ==================== РЕЗЕРВНЫЕ КОПИИ ==================== */
 const BK_KEY='colorist_backup_at';
-function backupInfoText(){
+function backupShort(){                    // для строки в Настройках
   const t=localStorage.getItem(BK_KEY);
-  if(!t) return '⚠️ Копия ещё ни разу не сохранялась. Данные живут только в этом браузере.';
-  const days=Math.floor((Date.now()-+t)/86400000);
-  if(days===0) return '✅ Последняя копия — сегодня.';
-  if(days<=7) return `Последняя копия — ${days} ${plural(days,'день','дня','дней')} назад.`;
-  return `⚠️ Последняя копия — ${days} ${plural(days,'день','дня','дней')} назад. Пора обновить.`;
+  if(!t) return '<span style="color:var(--amber)">не было</span>';
+  const д=Math.floor((Date.now()-+t)/86400000);
+  if(д===0) return 'сегодня';
+  if(д===1) return 'вчера';
+  const s=д+' '+plural(д,'день','дня','дней')+' назад';
+  return д>7?`<span style="color:var(--amber)">${s}</span>`:s;
 }
 function backupBlob(){
   const data={...DB, _экспорт:todayISO(), _приложение:'colorist-app'};

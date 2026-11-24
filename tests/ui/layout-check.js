@@ -118,6 +118,8 @@ async (page) => {
       supplierWa: "поставщикSheet(); каналПоставщика('wa')",
       supplierShare: "поставщикSheet(); каналПоставщика('share')",
       supplierEdit: "поставщикSheet((DB.поставщики[0]||{}).id)",
+      suppliers: "поставщикиSheet()", backup: "копияSheet()", serverConnect: "серверSheet()",
+      server: "localStorage.setItem('colorist_sync', JSON.stringify({url:'https://sync.invalid', key:'x'})); серверSheet(); localStorage.removeItem('colorist_sync')",
       confirm: "confirmDo('Удалить ВСЕ данные учёта? На сервере они тоже будут стёрты. Отменить нельзя — только восстановить из копии.', ()=>{}, 'Удалить всё')",
     };
     for (const [k, js] of Object.entries(sheets)) {

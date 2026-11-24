@@ -34,6 +34,9 @@ const ИК={
   book:svgИк('<path d="M4 5.5h6a2 2 0 0 1 2 2V20a2 2 0 0 0-2-2H4Z"/><path d="M20 5.5h-6a2 2 0 0 0-2 2V20a2 2 0 0 1 2-2h6Z"/>'),
   dots:svgИк('<circle cx="6" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18" cy="12" r="1.2"/>'),
   tools:svgИк('<path d="M14.7 6.3a3.7 3.7 0 0 0-5 5l-6 6 2 2 6-6a3.7 3.7 0 0 0 5-5l-2.2 2.2-2-2Z"/>'),
+  cloud:svgИк('<path d="M7 18.5h10a4 4 0 0 0 .6-7.95A5.5 5.5 0 0 0 7 9.5a4.5 4.5 0 0 0 0 9Z"/>'),
+  archive:svgИк('<rect x="3.5" y="4.5" width="17" height="4.5" rx="1.5"/><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9"/><path d="M10 13h4"/>'),
+  trash:svgИк('<path d="M4.5 7h15M9.5 7V4.8h5V7"/><path d="M6.5 7l.9 12.2A2 2 0 0 0 9.4 21h5.2a2 2 0 0 0 2-1.8L17.5 7"/><path d="M10.5 11v6M13.5 11v6"/>'),
 };
 const ИК_КАТ={материалы:'bottle', расходники:'foil', косметика:'care', мелочь:'spark', еда:'cup', такси:'car',
   аренда:'home', кредит:'card', налог:'doc', реклама:'ads', обучение:'book', прочее:'dots'};
@@ -548,13 +551,10 @@ function экранОтчёт(){
 }
 
 /* ==================== НАСТРОЙКИ ====================
-   Содержимое — цех «Настройки» (renderSettings): версия, сервер, нормы, копии, сброс. */
+   Содержимое — цех «Настройки» (renderSettings): группы строк, действия в шторках. */
 function экранНастройки(){
-  // Тест голоса — временная страница: проверить на её iPhone, как диктовка понимает формулы
   return `<div class="hello"><div><div class="h1">Настройки</div></div></div>
-    <button class="glass item" onclick="location.href='voice-test.html'"><span class="ico">${ИК.mic}</span>
-      <div class="main"><div class="t">Тест голоса</div></div><span class="chev">›</span></button>
-    <div class="settings">${блокПоставщиков()}${renderSettings()}</div>`;
+    <div class="settings">${renderSettings()}</div>`;
 }
 
 /* ==================== КРУГОВОЕ МЕНЮ ====================

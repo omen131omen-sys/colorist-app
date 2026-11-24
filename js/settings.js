@@ -1,5 +1,5 @@
 /* ==================== ЦЕХ «НАСТРОЙКИ» ====================
-   Экран настроек (версия, синхронизация, копии, опасная зона) и справочник норм расхода.
+   Экран настроек (группы строк, шторки сервера и копий) и справочник норм расхода.
    Подробно: docs/workshops/settings.md */
 
 function resetData(){
@@ -7,55 +7,49 @@ function resetData(){
     DB=seed(); syncReplaceNext(); save(); go('stock'); toast('Все данные удалены'); }, 'Удалить всё');
 }
 
-/* ==================== НАСТРОЙКИ ==================== */
+/* ==================== НАСТРОЙКИ ====================
+   Как настройки iPhone: три группы строк, справа — значение. Действия — в шторках,
+   на экране только то, что нужно увидеть с одного взгляда. */
+function строкаНастроек(ик, назв, знач, onclick, cls){
+  return `<button class="srow${cls?' '+cls:''}" onclick="${onclick}"><span class="gico">${ИК[ик]}</span>`+
+    `<span class="t">${назв}</span>${знач!=null?`<span class="v">${знач}</span>`:''}${cls?'':'<span class="chev">›</span>'}</button>`;
+}
 function renderSettings(){
-  const sc=syncCfg();
-  let h='';
-  // Версия сборки — чтобы сразу видеть, долетело ли обновление на телефон.
-  h+=`<div class="card" style="margin-bottom:12px"><div class="row between">
-      <span class="sm muted">Версия приложения</span>
-      <span class="sm mono" style="font-weight:700">${APP_BUILD}</span>
-    </div></div>`;
-  h+=`<div class="section-title"><span>Синхронизация с сервером</span></div>
-    <div class="card">
-      <div class="sm" style="margin-bottom:10px">${syncStatusText()}</div>
-      ${sc&&sc.url?`
-        <div class="fld-row">
-          <button class="btn soft" onclick="pushSync().then(ok=>toast(ok?'Синхронизировано ✓':'Ошибка: '+(_sync.err||'нет связи')))">🔄 Синхронизировать</button>
-          <button class="btn ghost" onclick="disconnectSync()">Отключить</button>
-        </div>`
-      :`
-        <label class="fld"><span>Адрес сервера</span>
-          <input id="sy_url" placeholder="https://1.2.3.4.sslip.io" value=""></label>
-        <label class="fld"><span>Секретный ключ</span>
-          <input id="sy_key" placeholder="ключ из настройки сервера" value=""></label>
-        <button class="btn" onclick="connectSync()">🔗 Подключить</button>`}
-    </div>`;
-
-  h+=`<div class="section-title"><span>Нормы расхода</span></div>
-    <div class="card tap" onclick="нормыSheet()" style="display:flex;align-items:center;gap:11px">
-      <span class="gico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 18.5C5.5 10.5 11.5 5.5 19 5.5c0 7.5-5.5 13-13 13a5 5 0 0 1-.5-.02Z"/><path d="M6 18C9 14.5 12.8 11.6 16.5 9.8"/></svg></span>
-      <div class="grow"><div class="title">Уход и мелочь</div>
-        <div class="sm muted">${(DB.нормы||[]).length} ${plural((DB.нормы||[]).length,'строка','строки','строк')}</div></div>
-      <span style="color:var(--muted)">›</span></div>`;
-
-  h+=`<div class="section-title"><span>Резервная копия</span></div>
-    <div class="card">
-      <div class="sm muted" style="margin-bottom:10px">${backupInfoText()}</div>
-      <div class="fld-row" style="margin-bottom:8px">
-        <button class="btn soft" onclick="shareBackup()">📲 Отправить копию</button>
-        <button class="btn ghost" onclick="downloadBackup()">⬇️ Скачать</button>
-      </div>
-      <button class="btn ghost" onclick="document.getElementById('backupFile').click()">📥 Восстановить из копии</button>
-      <input id="backupFile" type="file" accept=".json,application/json" style="display:none" onchange="importBackup(this)">
-    </div>`;
-
-  h+=`<div class="section-title"><span>Опасная зона</span></div>
-    <div class="card">
-      <button class="btn danger" onclick="resetData()">🗑 Удалить все данные</button>
+  const пп=DB.поставщики||[], нн=(DB.нормы||[]).length;
+  return `<div class="sgroup glass">
+      ${строкаНастроек('order','Поставщики', пп.length?esc(пп.map(p=>p.название).join(', ')):'нет', 'поставщикиSheet()')}
+      ${строкаНастроек('care','Нормы расхода', нн+' '+plural(нн,'строка','строки','строк'), 'нормыSheet()')}
+      ${строкаНастроек('mic','Тест голоса', null, "location.href='voice-test.html'")}
     </div>
-    <div style="height:12px"></div>`;
-  return h;
+    <div class="sgroup glass">
+      ${строкаНастроек('cloud','Сервер', syncStatusShort(), 'серверSheet()')}
+      ${строкаНастроек('archive','Резервная копия', backupShort(), 'копияSheet()')}
+    </div>
+    <div class="sgroup glass">${строкаНастроек('trash','Удалить все данные', null, 'resetData()', 'danger')}</div>
+    <div class="sver">Сборка ${APP_BUILD}</div>
+    <input id="backupFile" type="file" accept=".json,application/json" style="display:none" onchange="importBackup(this)">`;
+}
+function серверSheet(){
+  const c=syncCfg();
+  if(c&&c.url) openSheet('Сервер', `<div class="card">
+      <div class="kv"><span class="k">Адрес</span><span class="v">${esc(c.url)}</span></div>
+      <div class="kv"><span class="k">Обмен</span><span class="v">${syncStatusShort()}</span></div></div>`,
+    [`<button class="btn ghost" onclick="closeSheet();disconnectSync()">Отключить</button>`,
+     `<button class="btn" onclick="pushSync().then(ok=>{toast(ok?'Синхронизировано ✓':'Ошибка: '+(_sync.err||'нет связи'));серверSheet();})">Синхронизировать</button>`]);
+  else openSheet('Сервер', `
+      <label class="fld"><span>Адрес сервера</span><input id="sy_url" placeholder="https://…sslip.io" autocapitalize="off" autocomplete="off"></label>
+      <label class="fld"><span>Ключ</span><input id="sy_key" autocapitalize="off" autocomplete="off"></label>`,
+    [`<button class="btn ghost" onclick="closeSheet()">Отмена</button>`,
+     `<button class="btn" onclick="connectSync().then(()=>{ if(syncCfg()) closeSheet(); })">Подключить</button>`]);
+}
+function копияSheet(){
+  openSheet('Резервная копия', `<div class="card">
+      <div class="kv"><span class="k">Последняя</span><span class="v">${backupShort()}</span></div></div>
+    <div class="fld-row">
+      <button class="btn soft" onclick="closeSheet();shareBackup()">Отправить</button>
+      <button class="btn soft" onclick="closeSheet();downloadBackup()">Скачать</button>
+    </div>`,
+    [`<button class="btn ghost" onclick="closeSheet();document.getElementById('backupFile').click()">Восстановить из копии</button>`]);
 }
 
 /* ==================== СПРАВОЧНИК НОРМ ==================== */

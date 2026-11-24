@@ -340,9 +340,12 @@ button.glass{width:100%;text-align:left}
   font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
 .section-title:first-child{margin-top:4px}
 /* экран настроек — разметка цеха прямо на прядях: заголовки и пояснения — на плашках */
-.settings > .section-title{display:table;margin:18px 0 8px;padding:4px 10px;border-radius:999px;background:var(--glass-soft)}
-.settings > .section-title:first-child{margin-top:4px}
-.settings > .sm.muted{margin:0 0 4px!important;padding:9px 13px;border-radius:16px;background:var(--glass-soft)}
+/* блоки настроек — столбиком с ровным зазором: иначе кнопка, подсказка и карточка слипались */
+.settings{display:flex;flex-direction:column;gap:10px}
+.settings > .card{margin-bottom:0}
+.settings > .section-title{align-self:flex-start;margin:12px 0 0;padding:4px 10px;border-radius:999px;background:var(--glass-soft)}
+.settings > .section-title:first-child{margin-top:0}
+.settings > .sm.muted{margin:0!important;padding:9px 13px;border-radius:16px;background:var(--glass-soft)}
 .kv{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--glass-sep);font-size:14px}
 .kv:last-child{border-bottom:0}
 .kv .k{color:var(--ink-2);min-width:0}
@@ -379,6 +382,8 @@ select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.o
 /* поля в ряд — по нижнему краю: если подпись одного переносится, поля всё равно на одной линии */
 .fld-row{display:flex;gap:10px;align-items:flex-end}
 .fld-row > *{flex:1;min-width:0}
+/* кнопки в ряд — одной высоты, даже если подпись одной переносится («Отправить копию» / «Скачать») */
+.fld-row > .btn{align-self:stretch}
 /* заказ поставщику: группа, строка с галочкой и количеством упаковок */
 .grp{font-weight:700;font-size:16px;min-width:0}
 .grp small{display:block;font-weight:500;font-size:12.5px;color:var(--ink-2);margin-top:2px;overflow-wrap:anywhere}

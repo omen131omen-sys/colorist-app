@@ -591,14 +591,17 @@ function закрытьМеню(){ document.getElementById('radial').classList.r
 
 /* ==================== ЗАПУСК ==================== */
 // Приложение на экране «Домой» рисуется под строкой состояния (index.html: black-translucent).
-// Если iOS это применила, сверху есть отступ под часы — тогда часы белые, и верх фона чуть
-// темнее, чтобы их было видно. Если нет (старая установка) — полоса своя, её прячет переход.
+// Если iOS это применила, сверху есть отступ под часы (.edge). Если нет (иконку добавили до
+// этой настройки) — полоса своя, её прячет переход у верхнего края.
 (function(){
-  const p=document.createElement('div');
+  const html=document.documentElement, p=document.createElement('div');
   p.style.cssText='position:absolute;top:0;height:env(safe-area-inset-top,0px);visibility:hidden';
   document.body.appendChild(p);
-  if(p.getBoundingClientRect().height>0) document.documentElement.classList.add('edge');
-  p.remove();
+  const верх=p.getBoundingClientRect().height; p.remove();
+  if(верх>0) html.classList.add('edge');
+  // iOS в этом режиме рисует страницу с самого верха экрана, а высоту считает без строки
+  // состояния — снизу оставалась полоса голого фона высотой с неё (.short тянет до низа).
+  if(верх>0 && navigator.standalone && html.clientHeight+верх<=screen.height+2) html.classList.add('short');
 })();
 построитьКолесо();
 load();

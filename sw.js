@@ -1,8 +1,10 @@
 // Офлайн-кэш: после первого открытия приложение работает без интернета.
 // Новый файл в приложении → добавить сюда и поднять номер кэша.
-const CACHE = 'colorist-v4';
+const CACHE = 'colorist-v5';
 const JS = ['core','costing','store','parser','stock','services','works','expenses','report','settings','sync','app'];
+const FONTS = ['jost-cyrillic','jost-latin','manrope-cyrillic','manrope-latin'];
 const ASSETS = ['./', './index.html', './css/app.css', ...JS.map(n => './js/' + n + '.js'),
+                ...FONTS.map(n => './fonts/' + n + '.woff2'),
                 './manifest.json', './icon180.png', './icon512.png'];
 
 self.addEventListener('install', e => {

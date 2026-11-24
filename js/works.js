@@ -201,6 +201,8 @@ function drawNewWork(){
     </div>`;
   }).join('');
 
+  // Поля «Остаток смеси в отход» больше нет (решение 08.11: не заполнялось ни разу). У старых работ
+  // значение живёт в _nw.остаток: правка его сохраняет, карточка работы показывает, если оно было.
   openSheet(_nw._editId?'Изменить работу':'Расчёт работы', `
     <label class="fld"><span>Услуга (для цены и статистики)</span>
       <select onchange="_nw.услуга_id=this.value;loadNwLines();drawNewWork()">
@@ -226,8 +228,6 @@ function drawNewWork(){
 
     <div class="section-title"><span>Сверка расхода</span><span class="link" onclick="_nw.lines.push({материал_id:null,граммы:0});drawNewWork()">＋ строка</span></div>
     ${linesHtml||'<div class="sm muted" style="margin-bottom:10px">Пусто — можно так и оставить. Для консультации, укладки и подобного материалы не тратятся.</div>'}
-    <label class="fld"><span>Остаток смеси (в отход), г</span>
-      <input type="number" inputmode="numeric" value="${_nw.остаток}" onchange="_nw.остаток=+this.value"></label>
 
     ${нормыБлок()}
 

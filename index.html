@@ -3,63 +3,53 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#a9857b">
+<meta name="theme-color" content="#d6cbc1">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" sizes="180x180" href="icon180.png?v=3">
 <link rel="apple-touch-icon" href="icon180.png?v=3">
+<link rel="icon" href="icon180.png?v=3">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Учёт">
 <title>Колорист · Учёт расходников</title>
+<link rel="preload" href="fonts/manrope-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/jost-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
-<div id="splash">
-  <div class="sp-inner">
-    <div class="sp-emblem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2s6.4 7.2 6.4 11.4a6.4 6.4 0 0 1-12.8 0c0-4.2 6.4-11.4 6.4-11.4Z"/><path d="M9.4 15a2.7 2.7 0 0 0 2.6 2.4"/></svg></div>
-    <div class="sp-name">Учёт</div>
-    <div class="sp-sub">колориста</div>
-  </div>
-</div>
-<div id="app">
-  <header class="top">
-    <button class="gear" id="gearBtn" onclick="go('settings')" aria-label="Настройки"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h8M16 7h4"/><circle cx="14" cy="7" r="2.1"/><path d="M4 12h4M12 12h8"/><circle cx="10" cy="12" r="2.1"/><path d="M4 17h8M16 17h4"/><circle cx="14" cy="17" r="2.1"/></svg></button>
-    <h1 id="hTitle">Склад</h1>
-    <div class="sub" id="hSub">Материалы и остатки</div>
-  </header>
-  <main id="view"></main>
-</div>
+<div class="stage">
+  <div class="phone" id="phone">
+    <div class="bg"><i></i><i></i><i></i><i></i></div>
+    <div class="screen" id="screen"></div>
+    <nav class="tabbar" id="tabbar"></nav>
 
-<div class="fab" id="fabWrap"></div>
-
-<nav class="tabbar">
-  <div class="inner">
-    <button data-tab="stock" class="active"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2.6" width="10" height="3.4" rx="1.4"/><rect x="5.6" y="6" width="12.8" height="15.4" rx="3.2"/><path d="M5.6 12h12.8"/></svg></span>Склад</button>
-    <button data-tab="services"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6.6" r="2.6"/><circle cx="6" cy="17.4" r="2.6"/><path d="M8.3 8.1 20 18"/><path d="M8.3 15.9 20 6"/><path d="M12.5 12 15 13.8"/></svg></span>Услуги</button>
-    <button data-tab="works"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.6" y="5" width="16.8" height="16" rx="3.2"/><path d="M3.6 9.4h16.8"/><path d="M8 3v3.2M16 3v3.2"/><path d="M7.6 13h4M7.6 16.6h6.4"/></svg></span>Работы</button>
-    <button data-tab="expenses"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7.5a2 2 0 0 1 2-2h10.5a1 1 0 0 1 1 1v1.5"/><rect x="3.5" y="6.5" width="17" height="13" rx="3"/><path d="M15.5 12.2h3.2v3h-3.2a1.5 1.5 0 0 1 0-3Z"/></svg></span>Расход</button>
-    <button data-tab="report"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20.2h16"/><rect x="5.4" y="12" width="3.3" height="6.2" rx="1.1"/><rect x="10.35" y="8" width="3.3" height="10.2" rx="1.1"/><rect x="15.3" y="4.4" width="3.3" height="13.8" rx="1.1"/></svg></span>Отчёт</button>
-  </div>
-</nav>
-
-<div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()">
-  <div class="sheet" id="sheet">
-    <div class="grab"></div>
-    <div class="sheet-head"><h2 id="sheetTitle"></h2>
-      <span class="iconbtn" onclick="closeSheet()">✕</span></div>
-    <div class="sheet-body" id="sheetBody"></div>
-    <div class="sheet-foot" id="sheetFoot"></div>
-  </div>
-</div>
-<div class="toast" id="toast"></div>
-<div class="confirm-bg" id="confirmBg" onclick="if(event.target===this)closeConfirm()">
-  <div class="confirm">
-    <div class="confirm-msg" id="confirmMsg"></div>
-    <div class="confirm-btns">
-      <button class="btn ghost" onclick="closeConfirm()">Отмена</button>
-      <button class="btn danger" id="confirmYes" onclick="doConfirm()">Удалить</button>
+    <div class="sheet-bg" id="sheetBg" onclick="if(event.target===this)closeSheet()">
+      <div class="sheet" id="sheet">
+        <div class="grab"></div>
+        <div class="sheet-head"><h2 id="sheetTitle"></h2><button class="xbtn" onclick="closeSheet()" aria-label="Закрыть">✕</button></div>
+        <div class="sheet-body" id="sheetBody"></div>
+        <div class="sheet-foot" id="sheetFoot"></div>
+      </div>
     </div>
+
+    <div class="radial" id="radial" onclick="if(event.target===this)закрытьМеню()">
+      <div class="wheel" id="wheel"></div>
+      <div class="rhint">Быстрое меню.<br>Выбери, куда перейти, или нажми центр, чтобы закрыть.</div>
+    </div>
+
+    <div class="confirm-bg" id="confirmBg" onclick="if(event.target===this)closeConfirm()">
+      <div class="confirm">
+        <div class="confirm-msg" id="confirmMsg"></div>
+        <div class="confirm-btns">
+          <button class="btn ghost" onclick="closeConfirm()">Отмена</button>
+          <button class="btn danger" id="confirmYes" onclick="doConfirm()">Удалить</button>
+        </div>
+      </div>
+    </div>
+    <div class="toast" id="toast"></div>
+    <!-- старые формы прячут/показывают кнопки внизу экрана; в этой оболочке их нет -->
+    <div id="fabWrap"></div>
   </div>
 </div>
 
